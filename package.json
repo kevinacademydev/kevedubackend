@@ -1,0 +1,17 @@
+{
+  "name": "chanwooproject",
+  "version": "1.0.0",
+  "description": "수학 학원 첨삭 관리 웹 서비스",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "ejs": "^3.1.10",
+    "express": "^4.21.1",
+    "express-session": "^1.18.1",
+    "multer": "^1.4.5-lts.1",
+    "sql.js": "^1.11.0"
+  }
+}

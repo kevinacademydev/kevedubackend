@@ -1,0 +1,9 @@
+node_modules/
+data.db
+uploads/homework/*
+uploads/graded/*
+uploads/extra/*
+!uploads/homework/.gitkeep
+!uploads/graded/.gitkeep
+!uploads/extra/.gitkeep
+.env

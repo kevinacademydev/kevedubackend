@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>로그인 - 찬우 수학학원</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .login-page {
+      min-height: 100vh;
+      display: flex;
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      background: #fafafa;
+    }
+
+    /* Left branding panel */
+    .login-brand {
+      flex: 1;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 3rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-brand::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 30% 50%, rgba(255,255,255,0.03) 0%, transparent 50%),
+                  radial-gradient(circle at 70% 80%, rgba(255,255,255,0.02) 0%, transparent 40%);
+      pointer-events: none;
+    }
+
+    .brand-content {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+    }
+
+    .brand-icon {
+      width: 72px;
+      height: 72px;
+      border: 2px solid rgba(255,255,255,0.15);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 2rem;
+      font-size: 1.8rem;
+      color: #fff;
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px);
+    }
+
+    .brand-content h1 {
+      color: #fff;
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.75rem;
+    }
+
+    .brand-content p {
+      color: rgba(255,255,255,0.4);
+      font-size: 0.95rem;
+      font-weight: 400;
+      letter-spacing: 0.05em;
+    }
+
+    .brand-footer {
+      position: absolute;
+      bottom: 2rem;
+      left: 0;
+      right: 0;
+      text-align: center;
+      color: rgba(255,255,255,0.15);
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    /* Right form panel */
+    .login-form-panel {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem;
+      background: #fafafa;
+    }
+
+    .login-form-wrapper {
+      width: 100%;
+      max-width: 380px;
+    }
+
+    .login-greeting {
+      margin-bottom: 2.5rem;
+    }
+
+    .login-greeting h2 {
+      font-size: 1.65rem;
+      font-weight: 700;
+      color: #111;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+    }
+
+    .login-greeting p {
+      color: #888;
+      font-size: 0.9rem;
+      font-weight: 400;
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .login-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .login-field label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #333;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .login-field input {
+      padding: 0.85rem 1rem;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-family: 'Inter', sans-serif;
+      color: #111;
+      background: #fff;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    .login-field input::placeholder {
+      color: #bbb;
+      font-weight: 400;
+    }
+
+    .login-field input:focus {
+      border-color: #111;
+      box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
+    }
+
+    .login-btn {
+      margin-top: 0.5rem;
+      padding: 0.9rem;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      letter-spacing: 0.01em;
+    }
+
+    .login-btn:hover {
+      background: #333;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .login-btn:active {
+      transform: translateY(0);
+      background: #000;
+    }
+
+    .login-divider {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 0.75rem 0;
+    }
+
+    .login-divider::before,
+    .login-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e5e5e5;
+    }
+
+    .login-divider span {
+      font-size: 0.75rem;
+      color: #bbb;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .login-register-link {
+      text-align: center;
+    }
+
+    .login-register-link a {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: #666;
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 0.7rem 1.5rem;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 10px;
+      transition: all 0.2s ease;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .login-register-link a:hover {
+      border-color: #999;
+      color: #111;
+      background: #fff;
+    }
+
+    .login-alert {
+      padding: 0.8rem 1rem;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      background: #fafafa;
+      color: #666;
+      border: 1.5px solid #e0e0e0;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .login-alert.error {
+      border-color: #ccc;
+      background: #f5f5f5;
+      color: #444;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .login-page {
+        flex-direction: column;
+      }
+      .login-brand {
+        padding: 2.5rem 2rem;
+        min-height: auto;
+      }
+      .brand-icon {
+        width: 56px;
+        height: 56px;
+        font-size: 1.4rem;
+        margin-bottom: 1.25rem;
+      }
+      .brand-content h1 {
+        font-size: 1.5rem;
+      }
+      .brand-footer {
+        display: none;
+      }
+      .login-form-panel {
+        padding: 2rem 1.5rem 3rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-brand">
+      <div class="brand-content">
+        <div class="brand-icon">CW</div>
+        <h1>찬우 수학학원</h1>
+        <p>첨삭 관리 시스템</p>
+      </div>
+      <div class="brand-footer">CHANWOO MATH ACADEMY</div>
+    </div>
+
+    <div class="login-form-panel">
+      <div class="login-form-wrapper">
+        <div class="login-greeting">
+          <h2>로그인</h2>
+          <p>계정 정보를 입력해 주세요</p>
+        </div>
+
+        <% if (error) { %>
+          <div class="login-alert error"><%= error %></div>
+        <% } %>
+
+        <form action="/auth/login" method="POST" class="login-form">
+          <div class="login-field">
+            <label for="student_id">아이디</label>
+            <input type="text" id="student_id" name="student_id" placeholder="아이디를 입력하세요" required>
+          </div>
+
+          <div class="login-field">
+            <label for="password">비밀번호</label>
+            <input type="password" id="password" name="password" placeholder="비밀번호를 입력하세요" required>
+          </div>
+
+          <button type="submit" class="login-btn">로그인</button>
+        </form>
+
+        <div class="login-divider"><span>or</span></div>
+
+        <div class="login-register-link">
+          <a href="/register">회원가입</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

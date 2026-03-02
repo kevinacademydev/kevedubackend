@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>회원가입 - 찬우 수학학원</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card auth-card-wide">
+      <div class="auth-header">
+        <h1>회원가입</h1>
+        <p>찬우 수학학원 첨삭 관리 시스템</p>
+      </div>
+
+      <% if (error) { %>
+        <div class="alert alert-error"><%= error %></div>
+      <% } %>
+      <% if (success) { %>
+        <div class="alert alert-success"><%= success %></div>
+      <% } %>
+
+      <form action="/auth/register" method="POST" class="auth-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="student_id">학생 ID *</label>
+            <input type="text" id="student_id" name="student_id" placeholder="student0001" required pattern="student\d{4}">
+          </div>
+          <div class="form-group">
+            <label for="name">이름 *</label>
+            <input type="text" id="name" name="name" placeholder="홍길동" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="birth_date">생년월일</label>
+            <input type="date" id="birth_date" name="birth_date">
+          </div>
+          <div class="form-group">
+            <label for="gender">성별</label>
+            <select id="gender" name="gender">
+              <option value="">선택</option>
+              <option value="남">남</option>
+              <option value="여">여</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="school">학교</label>
+            <input type="text" id="school" name="school" placeholder="OO중학교">
+          </div>
+          <div class="form-group">
+            <label for="classes">수강 과목</label>
+            <input type="text" id="classes" name="classes" placeholder="수학 기초">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="parent_phone">학부모 연락처</label>
+          <input type="tel" id="parent_phone" name="parent_phone" placeholder="010-1234-5678">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="password">비밀번호 *</label>
+            <input type="password" id="password" name="password" placeholder="비밀번호" required minlength="4">
+          </div>
+          <div class="form-group">
+            <label for="password_confirm">비밀번호 확인 *</label>
+            <input type="password" id="password_confirm" name="password_confirm" placeholder="비밀번호 확인" required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full">회원가입</button>
+      </form>
+
+      <div class="auth-footer">
+        <a href="/">로그인으로 돌아가기</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
