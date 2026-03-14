@@ -3,422 +3,138 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>학생 대시보드 - 찬우 수학학원</title>
+  <title>학생 대시보드 - 케빈아카데미</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <nav class="navbar">
-    <div class="nav-brand">찬우 수학학원</div>
-    <div class="nav-info">
-      <span class="nav-user"><%= user.name %> (<%= user.student_id %>)</span>
-      <a href="/auth/logout" class="btn btn-sm btn-outline">로그아웃</a>
-    </div>
-  </nav>
-
-  <main class="container">
-    <h2 class="page-title">학생 대시보드</h2>
-
-    <!-- 새 첨삭 알림 -->
-    <% if (newCount > 0) { %>
-    <div class="alert alert-info">
-      새 첨삭 자료 <strong><%= newCount %>건</strong>이 도착했습니다!
-    </div>
-    <% } %>
-
-    <!-- 내 수업별 첨삭 점수 그래프 -->
-    <% if (myClasses && myClasses.length > 0) { %>
-    <section class="card" style="margin-bottom: 1.5rem;">
-      <div class="card-header">
-        <h3>첨삭 점수 추이</h3>
-        <div class="class-tabs" id="classTabs">
-          <% myClasses.forEach((cls, idx) => { %>
-            <button class="class-tab <%= idx === 0 ? 'active' : '' %>" data-index="<%= idx %>">
-              <%= cls.class_name %>
-              <% if (cls.status === 'inactive') { %><span class="tab-past">(과거)</span><% } %>
-            </button>
-          <% }); %>
-        </div>
+  <div class="student-layout">
+    <!-- Sidebar -->
+    <aside class="student-sidebar" id="studentSidebar">
+      <div class="sidebar-header">
+        <a href="/student" class="sidebar-logo">
+          <img src="/images/logo-horizontal-inverted.png" alt="Kevin Academy">
+        </a>
+        <button class="sidebar-close" id="sidebarClose">&times;</button>
       </div>
-      <div class="card-body">
-        <div class="chart-container">
-          <canvas id="scoreChart" height="320"></canvas>
+
+      <nav class="sidebar-nav">
+        <div class="sidebar-section">
+          <button class="sidebar-nav-item sidebar-toggle active" id="classesToggle">
+            <span class="sidebar-icon">&#128218;</span>
+            <span>내 수업</span>
+            <span class="sidebar-arrow" id="classesArrow">&#9660;</span>
+          </button>
+          <ul class="sidebar-submenu open" id="classesSubmenu">
+            <% if (myClasses.length === 0) { %>
+              <li class="sidebar-submenu-empty">등록된 수업 없음</li>
+            <% } else { %>
+              <% myClasses.forEach(cls => { %>
+                <li>
+                  <a href="/student/class/<%= cls.id %>" class="sidebar-submenu-item">
+                    <%= cls.name %>
+                  </a>
+                </li>
+              <% }) %>
+            <% } %>
+          </ul>
         </div>
-        <div class="chart-legend-custom" id="chartLegend"></div>
+
+        <div class="sidebar-section">
+          <a href="#" class="sidebar-nav-item" onclick="alert('준비 중인 기능입니다.'); return false;">
+            <span class="sidebar-icon">&#128100;</span>
+            <span>학생 프로필 관리</span>
+          </a>
+        </div>
+      </nav>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">외부 링크</div>
+        <a href="https://blog.naver.com/kevedu" target="_blank" rel="noopener" class="sidebar-nav-item sidebar-link">
+          <span class="sidebar-icon">&#128221;</span>
+          <span>Kevin Academy Blog</span>
+          <span class="sidebar-external">&#8599;</span>
+        </a>
+        <a href="https://pf.kakao.com/_PuTpxb/chat" target="_blank" rel="noopener" class="sidebar-nav-item sidebar-link">
+          <span class="sidebar-icon">&#128172;</span>
+          <span>카카오톡 상담</span>
+          <span class="sidebar-external">&#8599;</span>
+        </a>
+        <a href="https://www.desmos.com/calculator" target="_blank" rel="noopener" class="sidebar-nav-item sidebar-link">
+          <span class="sidebar-icon">&#128202;</span>
+          <span>Desmos 계산기</span>
+          <span class="sidebar-external">&#8599;</span>
+        </a>
       </div>
-    </section>
-    <% } %>
 
-    <div class="dashboard-grid">
-      <!-- 과제 제출 영역 -->
-      <section class="card">
-        <div class="card-header">
-          <h3>과제 제출</h3>
-          <span class="badge">최대 10개</span>
-        </div>
-        <div class="card-body">
-          <div class="dropzone" id="studentDropzone" data-url="/student/upload" data-max="10">
-            <div class="dropzone-content">
-              <div class="dropzone-icon">+</div>
-              <p>파일을 드래그하여 놓거나 클릭하세요</p>
-              <p class="dropzone-hint">PDF, JPG, PNG (최대 10개)</p>
-            </div>
-            <input type="file" id="studentFileInput" multiple accept=".pdf,.jpg,.jpeg,.png" style="display:none">
-          </div>
-          <div id="studentUploadProgress" class="upload-progress" style="display:none">
-            <div class="progress-bar"><div class="progress-fill"></div></div>
-            <span class="progress-text">업로드 중...</span>
-          </div>
-          <div id="studentUploadResult" class="upload-result"></div>
-        </div>
-      </section>
-
-      <!-- 채점 파일 목록 -->
-      <section class="card">
-        <div class="card-header">
-          <h3>첨삭 결과</h3>
-          <% if (newCount > 0) { %>
-            <span class="badge badge-new"><%= newCount %> NEW</span>
-          <% } %>
-        </div>
-        <div class="card-body">
-          <% if (gradedFiles.length === 0) { %>
-            <p class="empty-message">아직 첨삭 결과가 없습니다.</p>
-          <% } else { %>
-            <div class="file-list">
-              <% gradedFiles.forEach(file => { %>
-                <div class="file-item <%= file.is_new ? 'file-new' : '' %>">
-                  <div class="file-info">
-                    <span class="file-name">
-                      <% if (file.is_new) { %><span class="dot-new"></span><% } %>
-                      <%= file.file_name %>
-                    </span>
-                    <span class="file-date"><%= file.uploaded_at %></span>
-                  </div>
-                  <a href="/student/file/<%= file.id %>" class="btn btn-sm btn-primary">다운로드</a>
-                </div>
-              <% }); %>
-            </div>
-          <% } %>
-        </div>
-      </section>
-    </div>
-
-    <!-- 추가 첨삭 요청 -->
-    <section class="card" style="margin-top: 1.5rem;">
-      <div class="card-header">
-        <h3>추가 첨삭 요청</h3>
-        <span class="badge">1장 = 3,000원</span>
-      </div>
-      <div class="card-body">
-        <div class="extra-request-form">
-          <div class="payment-box">
-            <div class="payment-info">
-              <h4>카카오페이 송금 안내</h4>
-              <div class="qr-section">
-                <div class="qr-placeholder">
-                  <div class="qr-icon">QR</div>
-                  <p>카카오페이 QR코드</p>
-                </div>
-                <div class="payment-instructions">
-                  <p><strong>송금 방법:</strong></p>
-                  <ol>
-                    <li>카카오페이에서 QR코드를 스캔하세요</li>
-                    <li>송금 메모에 <code><%= user.student_id %></code> 를 입력하세요</li>
-                    <li>아래에서 페이지 수 선택 후 파일을 업로드하세요</li>
-                    <li>"결제 완료" 버튼을 눌러주세요</li>
-                  </ol>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="extra-form-fields">
-            <div class="form-row">
-              <div class="form-group">
-                <label for="extraPageCount">첨삭 페이지 수</label>
-                <input type="number" id="extraPageCount" min="1" max="50" value="1" class="extra-page-input">
-              </div>
-              <div class="form-group">
-                <label>결제 금액</label>
-                <div class="amount-display" id="extraAmount">3,000원</div>
-              </div>
-            </div>
-
-            <div class="extra-dropzone-wrapper">
-              <label>첨삭 요청 파일</label>
-              <div class="dropzone-mini" id="extraDropzone">
-                <div class="dropzone-content">
-                  <div class="dropzone-icon">+</div>
-                  <p>파일을 드래그하여 놓거나 클릭하세요</p>
-                  <p class="dropzone-hint">PDF, JPG, PNG (최대 10개)</p>
-                </div>
-                <input type="file" id="extraFileInput" multiple accept=".pdf,.jpg,.jpeg,.png" style="display:none">
-              </div>
-              <div id="extraFileList" class="extra-file-list"></div>
-            </div>
-
-            <div class="extra-buttons">
-              <button class="btn btn-primary btn-full" id="submitExtraRequest" disabled>
-                결제 완료 및 첨삭 요청
-              </button>
-            </div>
-            <div id="extraRequestResult" class="upload-result"></div>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-user-avatar"><%= user.name.charAt(0) %></div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name"><%= user.name %></div>
+            <div class="sidebar-user-role">학생</div>
           </div>
         </div>
+        <a href="/auth/logout" class="sidebar-logout" title="로그아웃">&#9109; 로그아웃</a>
       </div>
-    </section>
+    </aside>
 
-    <!-- 추가 첨삭 요청 이력 -->
-    <% if (extraRequests.length > 0) { %>
-    <section class="card" style="margin-top: 1.5rem;">
-      <div class="card-header">
-        <h3>추가 첨삭 요청 이력</h3>
-      </div>
-      <div class="card-body">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>요청일시</th>
-              <th>페이지</th>
-              <th>금액</th>
-              <th>상태</th>
-              <th>비고</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <% extraRequests.forEach(er => { %>
-              <tr>
-                <td><%= er.requested_at %></td>
-                <td><%= er.page_count %>장</td>
-                <td><%= er.total_amount.toLocaleString ? er.total_amount.toLocaleString() : er.total_amount %>원</td>
-                <td>
-                  <% if (er.status === 'payment_pending') { %>
-                    <span class="status-badge status-pending">결제 대기</span>
-                  <% } else if (er.status === 'payment_sent') { %>
-                    <span class="status-badge status-sent">입금 확인중</span>
-                  <% } else if (er.status === 'approved') { %>
-                    <span class="status-badge status-approved">승인됨</span>
-                  <% } else if (er.status === 'rejected') { %>
-                    <span class="status-badge status-rejected">거절됨</span>
-                  <% } else if (er.status === 'completed') { %>
-                    <span class="status-badge status-completed">완료</span>
-                  <% } %>
-                </td>
-                <td><%= er.admin_note || '' %></td>
-                <td>
-                  <% if (er.status === 'payment_pending') { %>
-                    <button class="btn btn-sm btn-primary btn-pay-confirm" data-id="<%= er.id %>">결제 완료</button>
-                  <% } %>
-                </td>
-              </tr>
-            <% }); %>
-          </tbody>
-        </table>
-      </div>
-    </section>
-    <% } %>
+    <!-- Sidebar overlay for mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- 내 제출 이력 -->
-    <section class="card" style="margin-top: 1.5rem;">
-      <div class="card-header">
-        <h3>제출 이력</h3>
+    <!-- Main content -->
+    <main class="student-main">
+      <div class="student-topbar">
+        <button class="hamburger-btn" id="hamburgerBtn">&#9776;</button>
+        <h2 class="topbar-title">내 수업</h2>
       </div>
-      <div class="card-body">
-        <% if (submissions.length === 0) { %>
-          <p class="empty-message">아직 제출한 과제가 없습니다.</p>
+
+      <div class="student-content" id="studentDashboard">
+        <% if (myClasses.length === 0) { %>
+          <div class="card">
+            <div class="card-body">
+              <p class="empty-message">등록된 수업이 없습니다. 관리자에게 문의하세요.</p>
+            </div>
+          </div>
         <% } else { %>
-          <table class="table">
-            <thead>
-              <tr>
-                <th>파일명</th>
-                <th>제출일시</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% submissions.forEach(sub => { %>
-                <tr>
-                  <td><%= sub.file_name %></td>
-                  <td><%= sub.submitted_at %></td>
-                </tr>
-              <% }); %>
-            </tbody>
-          </table>
+          <div class="class-grid">
+            <% myClasses.forEach(cls => { %>
+              <a href="/student/class/<%= cls.id %>" class="class-card">
+                <div class="class-card-info">
+                  <strong><%= cls.name %></strong>
+                  <span class="badge"><%= cls.type === 'regular' ? '정규' : cls.type === 'team' ? '그룹' : '개인' %></span>
+                  <% if (cls.new_graded_count > 0) { %>
+                    <span class="badge badge-new">새 채점 <%= cls.new_graded_count %></span>
+                  <% } %>
+                </div>
+                <div class="class-card-meta">
+                  <span>과제 <%= cls.submission_count %>건</span>
+                  <span>| 채점 <%= cls.graded_count %>건</span>
+                </div>
+              </a>
+            <% }) %>
+          </div>
+        <% } %>
+
+        <!-- 피드백 -->
+        <% if (feedbacks.length > 0) { %>
+        <div class="card" style="margin-top:1.5rem;">
+          <div class="card-header"><h3>최근 피드백</h3></div>
+          <div class="card-body">
+            <% feedbacks.forEach(fb => { %>
+              <div class="file-item" style="flex-direction:column;align-items:flex-start;gap:0.25rem;">
+                <span class="file-date"><strong><%= fb.author_name %></strong> | <%= fb.created_at %></span>
+                <p style="font-size:0.9rem;white-space:pre-wrap;"><%= fb.content %></p>
+              </div>
+            <% }) %>
+          </div>
+        </div>
         <% } %>
       </div>
-    </section>
-  </main>
+    </main>
+  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="/js/app.js"></script>
-  <% if (myClasses && myClasses.length > 0) { %>
-  <script>
-    const classData = <%- JSON.stringify(myClasses.map(c => ({
-      name: c.class_name,
-      status: c.status,
-      scores: c.scores,
-      averages: c.averages,
-      ranks: c.ranks,
-      totalStudents: c.totalStudents
-    }))) %>;
-
-    let chart = null;
-
-    function renderChart(idx) {
-      const cls = classData[idx];
-      const labels = [];
-      const myScores = [];
-      const avgScores = [];
-      const rankData = [];
-      const totalData = [];
-
-      for (let i = 1; i <= 32; i++) {
-        if (cls.scores[i] !== undefined && cls.scores[i] !== null) {
-          labels.push(i + '회차');
-          myScores.push(cls.scores[i]);
-          avgScores.push(cls.averages[i] || null);
-          rankData.push(cls.ranks[i] || null);
-          totalData.push(cls.totalStudents[i] || 0);
-        }
-      }
-
-      if (chart) chart.destroy();
-      const existing = document.querySelector('.no-data-msg');
-      if (existing) existing.remove();
-
-      if (myScores.length === 0) {
-        const container = document.querySelector('.chart-container');
-        const msg = document.createElement('p');
-        msg.className = 'empty-message no-data-msg';
-        msg.textContent = '아직 입력된 점수가 없습니다.';
-        container.appendChild(msg);
-        document.getElementById('chartLegend').innerHTML = '';
-        return;
-      }
-
-      const maxRank = Math.max(...totalData, 20);
-
-      const ctx = document.getElementById('scoreChart').getContext('2d');
-      chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: '내 점수',
-              data: myScores,
-              borderColor: '#4A90D9',
-              backgroundColor: '#4A90D920',
-              borderWidth: 3,
-              pointRadius: 6,
-              pointHoverRadius: 8,
-              pointBackgroundColor: '#4A90D9',
-              fill: true,
-              tension: 0.3,
-              yAxisID: 'y'
-            },
-            {
-              label: '전체 평균',
-              data: avgScores,
-              borderColor: '#F39C12',
-              backgroundColor: '#F39C1210',
-              borderWidth: 2,
-              borderDash: [6, 3],
-              pointRadius: 4,
-              pointHoverRadius: 6,
-              pointBackgroundColor: '#F39C12',
-              fill: false,
-              tension: 0.3,
-              yAxisID: 'y'
-            },
-            {
-              label: '등수',
-              data: rankData,
-              borderColor: '#E74C3C',
-              backgroundColor: '#E74C3C20',
-              borderWidth: 2.5,
-              pointRadius: 5,
-              pointHoverRadius: 7,
-              pointBackgroundColor: '#E74C3C',
-              pointStyle: 'rectRot',
-              fill: false,
-              tension: 0.3,
-              yAxisID: 'y1'
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: {
-            mode: 'index',
-            intersect: false
-          },
-          scales: {
-            y: {
-              type: 'linear',
-              position: 'left',
-              beginAtZero: true,
-              max: 100,
-              title: { display: true, text: '점수', font: { weight: 'bold' } },
-              grid: { color: '#E9ECEF' }
-            },
-            y1: {
-              type: 'linear',
-              position: 'right',
-              reverse: true,
-              min: 1,
-              max: maxRank,
-              title: { display: true, text: '등수', font: { weight: 'bold' } },
-              grid: { drawOnChartArea: false },
-              ticks: {
-                stepSize: 1,
-                callback: (v) => v + '등'
-              }
-            },
-            x: {
-              title: { display: true, text: '회차' },
-              grid: { color: '#F1F3F5' }
-            }
-          },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: (ctx) => {
-                  if (ctx.datasetIndex === 2) {
-                    const total = totalData[ctx.dataIndex];
-                    return `등수: ${ctx.parsed.y}등 / ${total}명`;
-                  }
-                  return `${ctx.dataset.label}: ${ctx.parsed.y}점`;
-                }
-              }
-            }
-          }
-        }
-      });
-
-      // 커스텀 범례
-      document.getElementById('chartLegend').innerHTML = `
-        <div class="chart-legend-items">
-          <span class="legend-item"><span class="legend-line" style="background:#4A90D9"></span> 내 점수</span>
-          <span class="legend-item"><span class="legend-line legend-dashed" style="background:#F39C12"></span> 전체 평균</span>
-          <span class="legend-item"><span class="legend-diamond" style="background:#E74C3C"></span> 등수 (오른쪽 축)</span>
-        </div>
-      `;
-    }
-
-    // 탭 클릭
-    document.querySelectorAll('.class-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.class-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        renderChart(parseInt(tab.dataset.index, 10));
-      });
-    });
-
-    renderChart(0);
-  </script>
-  <% } %>
 </body>
 </html>

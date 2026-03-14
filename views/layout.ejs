@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= typeof title !== 'undefined' ? title : '찬우 수학학원' %></title>
+  <title><%= typeof title !== 'undefined' ? title : '케빈아카데미' %></title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <% if (user) { %>
   <nav class="navbar">
-    <div class="nav-brand">찬우 수학학원</div>
+    <a href="/" class="nav-brand"><img src="/images/logo-horizontal.png" alt="Kevin Academy"></a>
     <div class="nav-info">
       <span class="nav-user"><%= user.name %> (<%= user.student_id %>)</span>
       <a href="/auth/logout" class="btn btn-sm btn-outline">로그아웃</a>

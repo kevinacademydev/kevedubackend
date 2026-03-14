@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= cls.name %> - 케빈아카데미</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="student-layout">
+    <!-- Sidebar -->
+    <aside class="student-sidebar" id="studentSidebar">
+      <div class="sidebar-header">
+        <a href="/student" class="sidebar-logo">
+          <img src="/images/logo-horizontal-inverted.png" alt="Kevin Academy">
+        </a>
+        <button class="sidebar-close" id="sidebarClose">&times;</button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="sidebar-section">
+          <button class="sidebar-nav-item sidebar-toggle active" id="classesToggle">
+            <span class="sidebar-icon">&#128218;</span>
+            <span>내 수업</span>
+            <span class="sidebar-arrow" id="classesArrow">&#9660;</span>
+          </button>
+          <ul class="sidebar-submenu open" id="classesSubmenu">
+            <% if (myClasses.length === 0) { %>
+              <li class="sidebar-submenu-empty">등록된 수업 없음</li>
+            <% } else { %>
+              <% myClasses.forEach(c => { %>
+                <li>
+                  <a href="/student/class/<%= c.id %>" class="sidebar-submenu-item <%= c.id === cls.id ? 'active' : '' %>">
+                    <%= c.name %>
+                  </a>
+                </li>
+              <% }) %>
+            <% } %>
+          </ul>
+        </div>
+
+        <div class="sidebar-section">
+          <a href="#" class="sidebar-nav-item" onclick="alert('준비 중인 기능입니다.'); return false;">
+            <span class="sidebar-icon">&#128100;</span>
+            <span>학생 프로필 관리</span>
+          </a>
+        </div>
+      </nav>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">외부 링크</div>
+        <a href="https://blog.naver.com/kevedu" target="_blank" rel="noopener" class="sidebar-nav-item sidebar-link">
+          <span class="sidebar-icon">&#128221;</span>
+          <span>Kevin Academy Blog</span>
+          <span class="sidebar-external">&#8599;</span>
+        </a>
+        <a href="https://pf.kakao.com/_PuTpxb/chat" target="_blank" rel="noopener" class="sidebar-nav-item sidebar-link">
+          <span class="sidebar-icon">&#128172;</span>
+          <span>카카오톡 상담</span>
+          <span class="sidebar-external">&#8599;</span>
+        </a>
+        <a href="https://www.desmos.com/calculator" target="_blank" rel="noopener" class="sidebar-nav-item sidebar-link">
+          <span class="sidebar-icon">&#128202;</span>
+          <span>Desmos 계산기</span>
+          <span class="sidebar-external">&#8599;</span>
+        </a>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-user-avatar"><%= user.name.charAt(0) %></div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name"><%= user.name %></div>
+            <div class="sidebar-user-role">학생</div>
+          </div>
+        </div>
+        <a href="/auth/logout" class="sidebar-logout" title="로그아웃">&#9109; 로그아웃</a>
+      </div>
+    </aside>
+
+    <!-- Sidebar overlay for mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Main content -->
+    <main class="student-main">
+      <div class="student-topbar">
+        <button class="hamburger-btn" id="hamburgerBtn">&#9776;</button>
+        <h2 class="topbar-title">
+          <%= cls.name %>
+          <span class="badge"><%= cls.type === 'regular' ? '정규' : cls.type === 'team' ? '그룹' : '개인' %></span>
+        </h2>
+      </div>
+
+      <div class="student-content" id="studentClassPage" data-class-id="<%= cls.id %>">
+        <!-- 수업 일정 캘린더 (읽기 전용) -->
+        <div class="card" style="margin-bottom:1.5rem;" id="studentCalendarCard">
+          <div class="card-header">
+            <h3>수업 일정</h3>
+            <div class="calendar-nav">
+              <button class="btn btn-sm btn-outline" id="calPrev">&larr;</button>
+              <span id="calTitle" style="font-weight:600;font-size:1rem;min-width:120px;text-align:center;"></span>
+              <button class="btn btn-sm btn-outline" id="calNext">&rarr;</button>
+              <button class="btn btn-sm btn-outline" id="calToday" style="margin-left:0.5rem;">오늘</button>
+            </div>
+          </div>
+          <div class="card-body" style="padding:0.75rem;">
+            <div class="calendar-weekdays">
+              <div class="calendar-weekday">월</div>
+              <div class="calendar-weekday">화</div>
+              <div class="calendar-weekday">수</div>
+              <div class="calendar-weekday">목</div>
+              <div class="calendar-weekday">금</div>
+              <div class="calendar-weekday sat">토</div>
+              <div class="calendar-weekday sun">일</div>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </div>
+        </div>
+
+        <!-- 일정 상세 모달 (읽기 전용) -->
+        <div class="modal-overlay" id="scheduleViewModal" style="display:none;">
+          <div class="modal">
+            <div class="modal-header">
+              <h3>일정 상세</h3>
+              <button class="modal-close" id="scheduleViewClose">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div id="scheduleViewContent"></div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-sm btn-outline" id="scheduleViewOk">확인</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <!-- Left: 파일 관련 -->
+          <div>
+            <!-- 과제 제출 -->
+            <div class="card" style="margin-bottom:1.5rem;">
+              <div class="card-header"><h3>과제 제출</h3></div>
+              <div class="card-body">
+                <div class="dropzone" id="homeworkDropzone">
+                  <div class="dropzone-icon">&#128196;</div>
+                  <p>과제 파일을 여기에 드래그하거나 클릭하세요</p>
+                  <p class="dropzone-hint">PDF, JPG, PNG (최대 5MB, 10개)</p>
+                  <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                </div>
+                <div id="hwProgress" class="upload-progress" style="display:none;">
+                  <div class="progress-bar"><div class="progress-fill"></div></div>
+                  <span class="progress-text">업로드 중...</span>
+                </div>
+                <div id="hwResults" class="upload-result"></div>
+
+                <% if (submissions.length > 0) { %>
+                  <h4 style="margin-top:1rem;font-size:0.9rem;color:var(--gray-600);">제출 이력</h4>
+                  <div class="file-list">
+                    <% submissions.forEach(s => { %>
+                      <div class="file-item">
+                        <div class="file-info">
+                          <span class="file-name"><%= s.file_name %></span>
+                          <span class="file-date"><%= s.submitted_at %></span>
+                        </div>
+                      </div>
+                    <% }) %>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+
+            <!-- 채점 결과 -->
+            <div class="card">
+              <div class="card-header"><h3>채점 결과</h3></div>
+              <div class="card-body">
+                <% if (gradedFiles.length === 0) { %>
+                  <p class="empty-message">아직 채점 결과가 없습니다.</p>
+                <% } else { %>
+                  <div class="file-list">
+                    <% gradedFiles.forEach(g => { %>
+                      <div class="file-item <%= g.is_new ? 'file-new' : '' %>">
+                        <div class="file-info">
+                          <span class="file-name">
+                            <% if (g.is_new) { %><span class="dot-new"></span><% } %>
+                            <%= g.file_name %>
+                          </span>
+                          <span class="file-date"><%= g.uploaded_at %></span>
+                        </div>
+                        <a href="/student/file/<%= g.id %>" class="btn btn-sm btn-primary">다운로드</a>
+                      </div>
+                    <% }) %>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: 점수/차트 -->
+          <div>
+            <div class="card">
+              <div class="card-header">
+                <h3>성적 추이</h3>
+                <%
+                  const scoredSchedules = classSchedules.filter(sch => myScores[sch.id] !== undefined);
+                %>
+                <% if (scoredSchedules.length > 0) { %>
+                <div class="chart-toggle" style="display:flex;gap:0.25rem;">
+                  <button class="btn btn-sm btn-primary" id="btnChartScore">점수</button>
+                  <button class="btn btn-sm btn-outline" id="btnChartRank">등수</button>
+                </div>
+                <% } %>
+              </div>
+              <div class="card-body">
+                <% if (scoredSchedules.length === 0) { %>
+                  <p class="empty-message">아직 성적 데이터가 없습니다.</p>
+                <% } else { %>
+                  <div class="chart-container">
+                    <canvas id="scoreChart"></canvas>
+                  </div>
+                  <div class="chart-legend-custom" id="legendScore">
+                    <div class="chart-legend-items">
+                      <span class="legend-item"><span class="legend-line" style="background:#133327;"></span> 내 점수</span>
+                      <span class="legend-item"><span class="legend-line legend-dashed"></span> 평균</span>
+                    </div>
+                  </div>
+                  <div class="chart-legend-custom" id="legendRank" style="display:none;">
+                    <div class="chart-legend-items">
+                      <span class="legend-item"><span class="legend-line" style="background:#133327;"></span> 내 등수</span>
+                    </div>
+                  </div>
+
+                  <!-- 점수 표 -->
+                  <div style="margin-top:1rem;overflow-x:auto;">
+                    <table class="table">
+                      <thead>
+                        <tr>
+                          <th>회차</th>
+                          <% scoredSchedules.forEach((sch, idx) => { %>
+                            <th style="text-align:center;font-size:0.75rem;" title="<%= sch.description || '' %>"><%= (classSchedules.indexOf(sch) + 1) %>회<br><span style="color:var(--gray-500);font-weight:400;font-size:0.65rem;"><%= sch.schedule_date.substring(5) %></span></th>
+                          <% }) %>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><strong>내 점수</strong></td>
+                          <% scoredSchedules.forEach(sch => { %><td style="text-align:center;"><%= myScores[sch.id] %></td><% }) %>
+                        </tr>
+                        <tr>
+                          <td><strong>평균</strong></td>
+                          <% scoredSchedules.forEach(sch => { %><td style="text-align:center;"><%= averages[sch.id] || '-' %></td><% }) %>
+                        </tr>
+                        <tr>
+                          <td><strong>등수</strong></td>
+                          <% scoredSchedules.forEach(sch => { %><td style="text-align:center;"><%= ranks[sch.id] ? ranks[sch.id] + '/' + totalStudents[sch.id] : '-' %></td><% }) %>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <%
+    const scoredForChart = classSchedules.filter(sch => myScores[sch.id] !== undefined);
+  %>
+  <% if (scoredForChart.length > 0) { %>
+  <script>
+    const chartSchedules = <%- JSON.stringify(scoredForChart.map((sch, i) => ({ id: sch.id, idx: classSchedules.indexOf(sch) + 1, date: sch.schedule_date.substring(5) }))) %>;
+    const myScoresData = <%- JSON.stringify(myScores) %>;
+    const averagesData = <%- JSON.stringify(averages) %>;
+    const ranksData = <%- JSON.stringify(ranks) %>;
+    const totalStudentsData = <%- JSON.stringify(totalStudents) %>;
+
+    const labels = chartSchedules.map(s => s.idx + '회 ' + s.date);
+    let scoreChart = null;
+    let currentMode = 'score';
+
+    function renderScoreChart() {
+      if (scoreChart) scoreChart.destroy();
+      const ctx = document.getElementById('scoreChart').getContext('2d');
+      scoreChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: '내 점수',
+              data: chartSchedules.map(s => myScoresData[s.id]),
+              borderColor: '#133327',
+              backgroundColor: 'rgba(19, 51, 39, 0.08)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 5,
+              pointBackgroundColor: '#133327'
+            },
+            {
+              label: '평균',
+              data: chartSchedules.map(s => averagesData[s.id] || null),
+              borderColor: '#F39C12',
+              borderDash: [6, 3],
+              fill: false,
+              tension: 0.3,
+              pointRadius: 4,
+              pointBackgroundColor: '#F39C12'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, max: 100 }
+          }
+        }
+      });
+    }
+
+    function renderRankChart() {
+      if (scoreChart) scoreChart.destroy();
+      const maxStudents = Math.max(...chartSchedules.map(s => totalStudentsData[s.id] || 1));
+      const ctx = document.getElementById('scoreChart').getContext('2d');
+      scoreChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: '내 등수',
+              data: chartSchedules.map(s => ranksData[s.id] || null),
+              borderColor: '#133327',
+              backgroundColor: 'rgba(19, 51, 39, 0.08)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 5,
+              pointBackgroundColor: '#133327'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              reverse: true,
+              min: 1,
+              max: maxStudents,
+              ticks: {
+                stepSize: 1,
+                callback: v => v + '등'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    renderScoreChart();
+
+    document.getElementById('btnChartScore').addEventListener('click', () => {
+      if (currentMode === 'score') return;
+      currentMode = 'score';
+      document.getElementById('btnChartScore').className = 'btn btn-sm btn-primary';
+      document.getElementById('btnChartRank').className = 'btn btn-sm btn-outline';
+      document.getElementById('legendScore').style.display = '';
+      document.getElementById('legendRank').style.display = 'none';
+      renderScoreChart();
+    });
+
+    document.getElementById('btnChartRank').addEventListener('click', () => {
+      if (currentMode === 'rank') return;
+      currentMode = 'rank';
+      document.getElementById('btnChartRank').className = 'btn btn-sm btn-primary';
+      document.getElementById('btnChartScore').className = 'btn btn-sm btn-outline';
+      document.getElementById('legendScore').style.display = 'none';
+      document.getElementById('legendRank').style.display = '';
+      renderRankChart();
+    });
+  </script>
+  <% } %>
+</body>
+</html>

@@ -7,3 +7,6 @@ uploads/extra/*
 !uploads/graded/.gitkeep
 !uploads/extra/.gitkeep
 .env
+cookies.txt
+cookies2.txt
+.claude/

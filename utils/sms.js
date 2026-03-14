@@ -66,7 +66,7 @@ async function sendSMS(to, message) {
 
 // 채점 완료 알림
 async function notifyGradingComplete(phone, name) {
-  const message = `[찬우수학학원] ${name} 학생의 첨삭 결과가 등록되었습니다. 학원 홈페이지에서 확인해주세요.`;
+  const message = `[케빈아카데미] ${name} 학생의 첨삭 결과가 등록되었습니다. 학원 홈페이지에서 확인해주세요.`;
   return sendSMS(phone, message);
 }
 
@@ -74,12 +74,12 @@ async function notifyGradingComplete(phone, name) {
 async function notifyExtraRequestStatus(phone, name, status, note) {
   let message;
   if (status === 'approved') {
-    message = `[찬우수학학원] ${name} 학생의 추가 첨삭 요청이 승인되었습니다. 첨삭 완료 후 다시 알려드리겠습니다.`;
+    message = `[케빈아카데미] ${name} 학생의 추가 첨삭 요청이 승인되었습니다. 첨삭 완료 후 다시 알려드리겠습니다.`;
   } else if (status === 'rejected') {
-    message = `[찬우수학학원] ${name} 학생의 추가 첨삭 요청이 거절되었습니다.`;
+    message = `[케빈아카데미] ${name} 학생의 추가 첨삭 요청이 거절되었습니다.`;
     if (note) message += ` 사유: ${note}`;
   } else if (status === 'completed') {
-    message = `[찬우수학학원] ${name} 학생의 추가 첨삭이 완료되었습니다. 학원 홈페이지에서 확인해주세요.`;
+    message = `[케빈아카데미] ${name} 학생의 추가 첨삭이 완료되었습니다. 학원 홈페이지에서 확인해주세요.`;
   }
   return sendSMS(phone, message);
 }

@@ -3,248 +3,124 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= student.name %> 관리 - 찬우 수학학원</title>
+  <title><%= student.name %> - 학생 관리</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <nav class="navbar">
-    <div class="nav-brand">
-      <a href="/admin" style="text-decoration:none;color:inherit;">찬우 수학학원</a>
-    </div>
-    <div class="nav-info">
-      <span class="nav-user"><%= user.name %> (관리자)</span>
-      <a href="/auth/logout" class="btn btn-sm btn-outline">로그아웃</a>
-    </div>
-  </nav>
+  <div class="student-layout">
+    <%- include('partials/admin-sidebar', { activePage: 'student' }) %>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-  <main class="container">
-    <div class="page-header-row">
-      <a href="/admin" class="btn btn-sm btn-outline">&larr; 대시보드</a>
-      <h2 class="page-title" style="margin-bottom:0;">
-        <%= student.name %> (<%= student.student_id %>) 관리 페이지
-      </h2>
-    </div>
+    <main class="student-main">
+      <div class="student-topbar">
+        <button class="hamburger-btn" id="hamburgerBtn">&#9776;</button>
+        <h2 class="topbar-title"><%= student.name %></h2>
+      </div>
 
-    <!-- 학생 기본 정보 -->
-    <section class="card" style="margin-top: 1rem;">
-      <div class="card-header">
-        <h3>학생 정보</h3>
-      </div>
-      <div class="card-body">
-        <div class="student-info-grid">
-          <div><strong>ID:</strong> <%= student.student_id %></div>
-          <div><strong>이름:</strong> <%= student.name %></div>
-          <div><strong>학교:</strong> <%= student.school || '-' %></div>
-          <div><strong>생년월일:</strong> <%= student.birth_date || '-' %></div>
-          <div><strong>성별:</strong> <%= student.gender || '-' %></div>
-          <div><strong>학부모 연락처:</strong> <%= student.parent_phone || '-' %></div>
-        </div>
-      </div>
-    </section>
+      <div class="student-content" id="adminStudentPage" data-student-id="<%= student.id %>" data-user-role="<%= userRole %>">
 
-    <!-- 수업 추가 -->
-    <section class="card" style="margin-top: 1.5rem;">
-      <div class="card-header">
-        <h3>수업 관리</h3>
-      </div>
-      <div class="card-body">
-        <div class="add-class-row">
-          <input type="text" id="newClassName" placeholder="수업 이름 (예: 수업A)" class="add-class-input">
-          <button class="btn btn-primary" id="addClassBtn">수업 추가</button>
-        </div>
-        <div id="addClassResult" class="upload-result"></div>
-      </div>
-    </section>
-
-    <!-- 현재 수업 -->
-    <% const activeClasses = classes.filter(c => c.status === 'active'); %>
-    <% const inactiveClasses = classes.filter(c => c.status === 'inactive'); %>
-
-    <% if (activeClasses.length > 0) { %>
-    <section class="card" style="margin-top: 1.5rem;">
-      <div class="card-header">
-        <h3>현재 수업</h3>
-        <span class="badge"><%= activeClasses.length %>개</span>
-      </div>
-      <div class="card-body">
-        <% activeClasses.forEach(cls => { %>
-          <div class="class-section" data-class-id="<%= cls.id %>">
-            <div class="class-header">
-              <h4><%= cls.class_name %></h4>
-              <div class="class-actions">
-                <button class="btn btn-sm btn-outline btn-toggle-status" data-id="<%= cls.id %>" data-status="inactive">과거 수업으로 이동</button>
-                <button class="btn btn-sm btn-danger btn-delete-class" data-id="<%= cls.id %>">삭제</button>
-              </div>
-            </div>
-            <div class="score-grid">
-              <% for (let i = 1; i <= 32; i++) { %>
-                <div class="score-cell">
-                  <label><%= i %>회차</label>
-                  <input type="number" min="0" max="100"
-                    class="score-input"
-                    data-class-id="<%= cls.id %>"
-                    data-session="<%= i %>"
-                    value="<%= cls.scores[i] !== undefined && cls.scores[i] !== null ? cls.scores[i] : '' %>">
-                </div>
-              <% } %>
-            </div>
-            <div class="score-save-row">
-              <button class="btn btn-primary btn-save-scores" data-class-id="<%= cls.id %>">점수 저장</button>
-              <span class="save-result" id="saveResult-<%= cls.id %>"></span>
+        <!-- 학생 정보 -->
+        <div class="card" style="margin-bottom:1.5rem;">
+          <div class="card-header"><h3>학생 정보</h3></div>
+          <div class="card-body">
+            <div class="student-info-grid">
+              <div><strong>아이디:</strong> <%= student.username %></div>
+              <div><strong>이름:</strong> <%= student.name %></div>
+              <div><strong>영문이름:</strong> <%= student.name_en || '-' %></div>
+              <div><strong>성별:</strong> <%= student.gender || '-' %></div>
+              <div><strong>생년월일:</strong> <%= student.birth_date || '-' %></div>
+              <div><strong>학년:</strong> <%= student.grade || '-' %></div>
+              <div><strong>학교:</strong> <%= student.school || '-' %></div>
+              <div><strong>학부모 연락처:</strong> <%= student.parent_phone || '-' %></div>
+              <div><strong>이메일:</strong> <%= student.email || '-' %></div>
+              <div><strong>가입일:</strong> <%= student.created_at %></div>
             </div>
           </div>
-        <% }); %>
-      </div>
-    </section>
-    <% } %>
+        </div>
 
-    <!-- 과거 수업 -->
-    <% if (inactiveClasses.length > 0) { %>
-    <section class="card" style="margin-top: 1.5rem;">
-      <div class="card-header">
-        <h3>과거 수업</h3>
-        <span class="badge"><%= inactiveClasses.length %>개</span>
-      </div>
-      <div class="card-body">
-        <% inactiveClasses.forEach(cls => { %>
-          <div class="class-section class-inactive" data-class-id="<%= cls.id %>">
-            <div class="class-header">
-              <h4><%= cls.class_name %> <span class="status-badge status-pending">과거</span></h4>
-              <div class="class-actions">
-                <button class="btn btn-sm btn-outline btn-toggle-status" data-id="<%= cls.id %>" data-status="active">현재 수업으로 이동</button>
-                <button class="btn btn-sm btn-danger btn-delete-class" data-id="<%= cls.id %>">삭제</button>
+        <!-- 수업 목록 -->
+        <div class="card" style="margin-bottom:1.5rem;">
+          <div class="card-header"><h3>수업 목록</h3></div>
+          <div class="card-body">
+            <% if (classes.length === 0) { %>
+              <p class="empty-message">등록된 수업이 없습니다.</p>
+            <% } else { %>
+              <% classes.forEach(cls => { %>
+                <a href="/admin/class/<%= cls.id %>" class="class-card <%= cls.status === 'dropped' ? 'class-inactive' : '' %>" style="display:block;margin-bottom:0.5rem;">
+                  <div class="class-card-info">
+                    <strong><%= cls.name %></strong>
+                    <span class="badge"><%= cls.type === 'regular' ? '정규' : cls.type === 'team' ? '그룹' : '개인' %></span>
+                    <span class="badge"><%= cls.status === 'active' ? '등록' : '해제' %></span>
+                  </div>
+                </a>
+              <% }) %>
+            <% } %>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <!-- 피드백 -->
+          <div>
+            <div class="card">
+              <div class="card-header"><h3>피드백</h3></div>
+              <div class="card-body">
+                <div class="form-group" style="margin-bottom:1rem;">
+                  <textarea id="feedbackContent" rows="3" placeholder="피드백 내용을 입력하세요..." style="width:100%;padding:0.65rem;border:1.5px solid var(--gray-300);border-radius:var(--radius);font-size:0.9rem;resize:vertical;"></textarea>
+                  <button class="btn btn-sm btn-primary" id="btnAddFeedback" style="margin-top:0.5rem;">피드백 작성</button>
+                </div>
+                <div id="feedbackList">
+                  <% if (feedbacks.length === 0) { %>
+                    <p class="empty-message">작성된 피드백이 없습니다.</p>
+                  <% } else { %>
+                    <% feedbacks.forEach(fb => { %>
+                      <div class="file-item" style="flex-direction:column;align-items:flex-start;gap:0.25rem;">
+                        <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+                          <span class="file-date"><strong><%= fb.author_name %></strong> | <%= fb.created_at %></span>
+                          <button class="btn btn-sm btn-outline btn-delete-feedback" data-id="<%= fb.id %>">삭제</button>
+                        </div>
+                        <p style="font-size:0.9rem;white-space:pre-wrap;"><%= fb.content %></p>
+                      </div>
+                    <% }) %>
+                  <% } %>
+                </div>
               </div>
             </div>
-            <div class="score-grid">
-              <% for (let i = 1; i <= 32; i++) { %>
-                <div class="score-cell">
-                  <label><%= i %>회차</label>
-                  <input type="number" min="0" max="100"
-                    class="score-input"
-                    data-class-id="<%= cls.id %>"
-                    data-session="<%= i %>"
-                    value="<%= cls.scores[i] !== undefined && cls.scores[i] !== null ? cls.scores[i] : '' %>">
-                </div>
-              <% } %>
-            </div>
-            <div class="score-save-row">
-              <button class="btn btn-primary btn-save-scores" data-class-id="<%= cls.id %>">점수 저장</button>
-              <span class="save-result" id="saveResult-<%= cls.id %>"></span>
-            </div>
           </div>
-        <% }); %>
+
+          <!-- 상담기록 (원장만) -->
+          <div>
+            <% if (userRole === 'admin') { %>
+            <div class="card">
+              <div class="card-header"><h3>상담기록</h3></div>
+              <div class="card-body">
+                <div class="form-group" style="margin-bottom:1rem;">
+                  <textarea id="consultationContent" rows="3" placeholder="상담기록 내용을 입력하세요..." style="width:100%;padding:0.65rem;border:1.5px solid var(--gray-300);border-radius:var(--radius);font-size:0.9rem;resize:vertical;"></textarea>
+                  <button class="btn btn-sm btn-primary" id="btnAddConsultation" style="margin-top:0.5rem;">상담기록 작성</button>
+                </div>
+                <div id="consultationList">
+                  <% if (consultations.length === 0) { %>
+                    <p class="empty-message">작성된 상담기록이 없습니다.</p>
+                  <% } else { %>
+                    <% consultations.forEach(con => { %>
+                      <div class="file-item" style="flex-direction:column;align-items:flex-start;gap:0.25rem;">
+                        <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+                          <span class="file-date"><strong><%= con.author_name %></strong> | <%= con.created_at %></span>
+                          <button class="btn btn-sm btn-outline btn-delete-consultation" data-id="<%= con.id %>">삭제</button>
+                        </div>
+                        <p style="font-size:0.9rem;white-space:pre-wrap;"><%= con.content %></p>
+                      </div>
+                    <% }) %>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+            <% } %>
+          </div>
+        </div>
       </div>
-    </section>
-    <% } %>
+    </main>
+  </div>
 
-    <% if (classes.length === 0) { %>
-    <section class="card" style="margin-top: 1.5rem;">
-      <div class="card-body">
-        <p class="empty-message">등록된 수업이 없습니다. 위에서 수업을 추가해주세요.</p>
-      </div>
-    </section>
-    <% } %>
-  </main>
-
-  <script>
-    const studentDbId = '<%= student.id %>';
-
-    // 수업 추가
-    document.getElementById('addClassBtn').addEventListener('click', () => {
-      const input = document.getElementById('newClassName');
-      const name = input.value.trim();
-      const resultEl = document.getElementById('addClassResult');
-      if (!name) { resultEl.innerHTML = '<div class="result-item result-error">수업 이름을 입력해주세요.</div>'; return; }
-
-      fetch(`/admin/student/${studentDbId}/class`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ class_name: name })
-      })
-      .then(r => r.json())
-      .then(data => {
-        if (data.error) { resultEl.innerHTML = `<div class="result-item result-error">${data.error}</div>`; return; }
-        location.reload();
-      })
-      .catch(() => resultEl.innerHTML = '<div class="result-item result-error">오류가 발생했습니다.</div>');
-    });
-
-    // 점수 저장
-    document.querySelectorAll('.btn-save-scores').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const classId = btn.dataset.classId;
-        const inputs = document.querySelectorAll(`.score-input[data-class-id="${classId}"]`);
-        const scores = {};
-        inputs.forEach(inp => {
-          scores[inp.dataset.session] = inp.value;
-        });
-
-        btn.disabled = true;
-        btn.textContent = '저장중...';
-        const resultEl = document.getElementById(`saveResult-${classId}`);
-
-        fetch(`/admin/student/${studentDbId}/class/${classId}/scores`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ scores })
-        })
-        .then(r => r.json())
-        .then(data => {
-          btn.disabled = false;
-          btn.textContent = '점수 저장';
-          if (data.error) { resultEl.textContent = data.error; resultEl.style.color = 'var(--danger)'; return; }
-          resultEl.textContent = '저장 완료!';
-          resultEl.style.color = 'var(--success)';
-          setTimeout(() => resultEl.textContent = '', 2000);
-        })
-        .catch(() => {
-          btn.disabled = false;
-          btn.textContent = '점수 저장';
-          resultEl.textContent = '오류 발생';
-          resultEl.style.color = 'var(--danger)';
-        });
-      });
-    });
-
-    // 수업 상태 변경
-    document.querySelectorAll('.btn-toggle-status').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const classId = btn.dataset.id;
-        const newStatus = btn.dataset.status;
-        btn.disabled = true;
-
-        fetch(`/admin/student/${studentDbId}/class/${classId}/status`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: newStatus })
-        })
-        .then(r => r.json())
-        .then(data => {
-          if (data.error) { alert(data.error); btn.disabled = false; return; }
-          location.reload();
-        })
-        .catch(() => { alert('오류가 발생했습니다.'); btn.disabled = false; });
-      });
-    });
-
-    // 수업 삭제
-    document.querySelectorAll('.btn-delete-class').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (!confirm('이 수업과 모든 점수 데이터를 삭제하시겠습니까?')) return;
-        const classId = btn.dataset.id;
-        btn.disabled = true;
-
-        fetch(`/admin/student/${studentDbId}/class/${classId}/delete`, {
-          method: 'POST'
-        })
-        .then(r => r.json())
-        .then(data => {
-          if (data.error) { alert(data.error); btn.disabled = false; return; }
-          location.reload();
-        })
-        .catch(() => { alert('오류가 발생했습니다.'); btn.disabled = false; });
-      });
-    });
-  </script>
+  <script src="/js/app.js"></script>
 </body>
 </html>

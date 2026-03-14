@@ -1,0 +1,137 @@
+<!-- Admin/Teacher Sidebar -->
+<aside class="student-sidebar" id="adminSidebar">
+  <div class="sidebar-header">
+    <a href="/admin" class="sidebar-logo">
+      <img src="/images/logo-horizontal-inverted.png" alt="Kevin Academy">
+    </a>
+    <button class="sidebar-close" id="sidebarClose">&times;</button>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="sidebar-section">
+      <a href="/admin" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'dashboard' ? 'active' : '' %>">
+        <span class="sidebar-icon">&#128200;</span>
+        <span>대시보드</span>
+      </a>
+    </div>
+
+    <% const activeClasses = sidebarClasses.filter(c => c.status !== 'inactive'); %>
+    <% const inactiveClasses = sidebarClasses.filter(c => c.status === 'inactive'); %>
+
+    <div class="sidebar-section">
+      <button class="sidebar-nav-item sidebar-toggle active" data-target="activeClassesSubmenu">
+        <span class="sidebar-icon">&#128218;</span>
+        <span>현재 수업</span>
+        <span class="sidebar-arrow">&#9660;</span>
+      </button>
+      <ul class="sidebar-submenu open" id="activeClassesSubmenu">
+        <% if (activeClasses.length === 0) { %>
+          <li class="sidebar-submenu-empty">등록된 수업 없음</li>
+        <% } else { %>
+          <% activeClasses.forEach(cls => { %>
+            <li>
+              <a href="/admin/class/<%= cls.id %>" class="sidebar-submenu-item <%= typeof activeClassId !== 'undefined' && activeClassId == cls.id ? 'active' : '' %>">
+                <%= cls.name %>
+              </a>
+            </li>
+          <% }) %>
+        <% } %>
+      </ul>
+    </div>
+
+    <% if (inactiveClasses.length > 0) { %>
+    <div class="sidebar-section">
+      <button class="sidebar-nav-item sidebar-toggle" data-target="inactiveClassesSubmenu">
+        <span class="sidebar-icon">&#128220;</span>
+        <span>과거 수업</span>
+        <span class="sidebar-arrow">&#9660;</span>
+      </button>
+      <ul class="sidebar-submenu" id="inactiveClassesSubmenu">
+        <% inactiveClasses.forEach(cls => { %>
+          <li>
+            <a href="/admin/class/<%= cls.id %>" class="sidebar-submenu-item class-inactive <%= typeof activeClassId !== 'undefined' && activeClassId == cls.id ? 'active' : '' %>">
+              <%= cls.name %>
+            </a>
+          </li>
+        <% }) %>
+      </ul>
+    </div>
+    <% } %>
+
+    <div class="sidebar-section">
+      <a href="/admin/<%= user.username %>/students-list" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'students-list' ? 'active' : '' %>">
+        <span class="sidebar-icon">&#128101;</span>
+        <span>학생 목록</span>
+      </a>
+    </div>
+
+    <% if (user.role === 'admin') { %>
+    <div class="sidebar-section">
+      <a href="/admin/teachers" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'teachers' ? 'active' : '' %>">
+        <span class="sidebar-icon">&#128100;</span>
+        <span>강사 관리</span>
+      </a>
+    </div>
+    <% } %>
+
+    <div class="sidebar-section">
+      <a href="/admin/submissions" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'submissions' ? 'active' : '' %>">
+        <span class="sidebar-icon">&#128196;</span>
+        <span>최근 과제 제출</span>
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <a href="/admin/graded" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'graded' ? 'active' : '' %>">
+        <span class="sidebar-icon">&#9989;</span>
+        <span>최근 채점 업로드</span>
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <a href="/admin/stats" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'stats' ? 'active' : '' %>">
+        <span class="sidebar-icon">&#128202;</span>
+        <span>통계</span>
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <a href="/admin/schedule-pages" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'schedule-pages' ? 'active' : '' %>">
+        <span class="sidebar-icon">&#128337;</span>
+        <span>시간표 만들기</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="sidebar-divider"></div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">외부 링크</div>
+    <a href="https://blog.naver.com/kevedu" target="_blank" rel="noopener" class="sidebar-nav-item sidebar-link">
+      <span class="sidebar-icon">&#128221;</span>
+      <span>Kevin Academy Blog</span>
+      <span class="sidebar-external">&#8599;</span>
+    </a>
+    <a href="https://pf.kakao.com/_PuTpxb/chat" target="_blank" rel="noopener" class="sidebar-nav-item sidebar-link">
+      <span class="sidebar-icon">&#128172;</span>
+      <span>카카오톡 상담</span>
+      <span class="sidebar-external">&#8599;</span>
+    </a>
+    <a href="https://www.desmos.com/calculator" target="_blank" rel="noopener" class="sidebar-nav-item sidebar-link">
+      <span class="sidebar-icon">&#128202;</span>
+      <span>Desmos 계산기</span>
+      <span class="sidebar-external">&#8599;</span>
+    </a>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar"><%= user.name.charAt(0) %></div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name"><%= user.name %></div>
+        <div class="sidebar-user-role"><%= user.role === 'admin' ? '원장' : '강사' %></div>
+      </div>
+    </div>
+    <a href="/auth/logout" class="sidebar-logout" title="로그아웃">&#9109; 로그아웃</a>
+  </div>
+</aside>

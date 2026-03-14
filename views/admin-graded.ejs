@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>최근 채점 업로드 - 케빈아카데미</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="student-layout">
+    <%- include('partials/admin-sidebar', { activePage: 'graded' }) %>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <main class="student-main">
+      <div class="student-topbar">
+        <button class="hamburger-btn" id="hamburgerBtn">&#9776;</button>
+        <h2 class="topbar-title">최근 채점 업로드</h2>
+      </div>
+
+      <div class="student-content">
+        <div class="card">
+          <div class="card-header">
+            <h3>채점 업로드 목록 (<%= showAll ? '전체' : '최근 100건' %>)</h3>
+            <div>
+              <input type="text" id="gradedSearch" placeholder="학생명, 수업명, 파일명 검색..." style="padding:0.4rem 0.75rem;border:1px solid #ddd;border-radius:6px;font-size:0.85rem;width:220px;">
+            </div>
+          </div>
+          <div class="card-body">
+            <% if (gradedFiles.length === 0) { %>
+              <p class="empty-message">최근 채점 파일이 없습니다.</p>
+            <% } else { %>
+              <div class="table-responsive">
+                <table class="table" id="gradedTable">
+                  <thead>
+                    <tr>
+                      <th>학생 ID</th>
+                      <th>학생명</th>
+                      <th>수업</th>
+                      <th>파일명</th>
+                      <th>업로드일시</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% gradedFiles.forEach(g => { %>
+                      <tr>
+                        <td><a href="/admin/student/<%= g.student_id %>" class="student-link"><%= g.username %></a></td>
+                        <td><%= g.student_name %></td>
+                        <td><a href="/admin/class/<%= g.class_id %>"><%= g.class_name %></a></td>
+                        <td><%= g.file_name %></td>
+                        <td><%= g.uploaded_at %></td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              </div>
+              <% if (!showAll && gradedFiles.length >= 100) { %>
+                <div style="text-align:center;margin-top:1rem;">
+                  <a href="/admin/graded?all=1" class="btn btn-outline">전체 내역 보기</a>
+                </div>
+              <% } %>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const search = document.getElementById('gradedSearch');
+      if (search) {
+        search.addEventListener('input', () => {
+          const q = search.value.toLowerCase();
+          document.querySelectorAll('#gradedTable tbody tr').forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+          });
+        });
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= page.title %> - Kevin Academy</title>
+  <link rel="stylesheet" href="/css/schedule-public.css">
+</head>
+<body id="schedulePublicPage">
+
+<% const hd = page.header_data; %>
+<% const sd = page.schedule_data; %>
+<% const syl = page.syllabus_data; %>
+<% const theme = page.theme_data; %>
+<%
+  // Fixed Kevin Academy theme colors
+  theme.heroBg = '#133327';
+  theme.accent = '#ffffff';
+  // Accent substitute for use on light backgrounds (white accent invisible on white bg)
+  const accentOnLight = '#133327';
+%>
+
+<%
+  // Bilingual helper: handles both old string format and new {ko, en} format
+  function t(field, lang) {
+    if (typeof field === 'object' && field !== null) return field[lang] || field.ko || '';
+    return field || '';
+  }
+  // Day name lookup for English
+  const dayMap = { '월': 'Mon', '화': 'Tue', '수': 'Wed', '목': 'Thu', '금': 'Fri', '토': 'Sat', '일': 'Sun' };
+%>
+
+<!-- Language Toggle -->
+<div class="sp-lang-toggle" id="spLangToggle">
+  <button class="sp-lang-btn active" data-lang="ko">KOR</button>
+  <button class="sp-lang-btn" data-lang="en">ENG</button>
+</div>
+
+<!-- Hero Section -->
+<section class="sp-hero" style="background: linear-gradient(135deg, <%= theme.heroBg || '#1a1a2e' %> 0%, <%= theme.heroBg || '#1a1a2e' %>cc 100%);">
+  <div class="sp-hero-inner">
+    <div class="sp-hero-badge">Kevin Academy</div>
+    <h1 class="sp-hero-title">
+      <span data-lang="ko"><%= t(hd.programTitle, 'ko') || page.title %></span>
+      <span data-lang="en" style="display:none;"><%= t(hd.programTitle, 'en') || page.title %></span>
+    </h1>
+    <% if (t(hd.subtitle, 'ko') || t(hd.subtitle, 'en')) { %>
+      <p class="sp-hero-subtitle">
+        <span data-lang="ko"><%= t(hd.subtitle, 'ko') %></span>
+        <span data-lang="en" style="display:none;"><%= t(hd.subtitle, 'en') %></span>
+      </p>
+    <% } %>
+    <% if (t(hd.description, 'ko') || t(hd.description, 'en')) { %>
+      <p class="sp-hero-desc">
+        <span data-lang="ko"><%= t(hd.description, 'ko') %></span>
+        <span data-lang="en" style="display:none;"><%= t(hd.description, 'en') %></span>
+      </p>
+    <% } %>
+
+    <% if (hd.cards && hd.cards.length > 0) { %>
+      <div class="sp-hero-cards">
+        <% hd.cards.forEach(card => { %>
+          <div class="sp-hero-card" style="border-color: <%= theme.accent || '#e94560' %>;">
+            <div class="sp-hero-card-title">
+              <span data-lang="ko"><%= t(card.title, 'ko') %></span>
+              <span data-lang="en" style="display:none;"><%= t(card.title, 'en') %></span>
+            </div>
+            <div class="sp-hero-card-desc">
+              <span data-lang="ko"><%= t(card.desc, 'ko') %></span>
+              <span data-lang="en" style="display:none;"><%= t(card.desc, 'en') %></span>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <% if (hd.highlights && hd.highlights.length > 0) { %>
+      <div class="sp-hero-highlights">
+        <% hd.highlights.forEach(h => { %>
+          <span class="sp-hero-highlight" style="border-color: <%= theme.accent || '#e94560' %>;">
+            &#10003; <span data-lang="ko"><%= t(h, 'ko') %></span><span data-lang="en" style="display:none;"><%= t(h, 'en') %></span>
+          </span>
+        <% }); %>
+      </div>
+    <% } %>
+  </div>
+</section>
+
+<!-- Schedule Section -->
+<% if (sd.days && sd.days.length > 0 && sd.blocks && sd.blocks.length > 0) { %>
+<%
+  let minH = 24, maxH = 0;
+  sd.blocks.forEach(b => {
+    const sh = parseInt(b.start.split(':')[0]);
+    const eh = parseInt(b.end.split(':')[0]);
+    const em = parseInt(b.end.split(':')[1] || 0);
+    if (sh < minH) minH = sh;
+    if (eh + (em > 0 ? 1 : 0) > maxH) maxH = eh + (em > 0 ? 1 : 0);
+  });
+  const startHour = minH;
+  const endHour = maxH;
+  const totalMinutes = (endHour - startHour) * 60;
+  const pxPerMin = 0.8;
+  const topPad = 12;
+  const botPad = 12;
+  const bodyH = totalMinutes * pxPerMin + topPad + botPad;
+%>
+<section class="sp-section">
+  <div class="sp-container">
+    <h2 class="sp-section-title" style="color: <%= theme.heroBg || '#1a1a2e' %>;">
+      <span data-lang="ko">시간표</span>
+      <span data-lang="en" style="display:none;">Schedule Overview</span>
+    </h2>
+
+    <div class="sp-timetable-wrapper">
+      <div class="sp-timetable" style="--start-hour:<%= startHour %>;--end-hour:<%= endHour %>;">
+        <!-- Time axis -->
+        <div class="sp-tt-time-col">
+          <div class="sp-tt-header-spacer"></div>
+          <div class="sp-tt-time-body" style="height:<%= bodyH %>px;">
+            <% for (let h = startHour; h <= endHour; h++) { %>
+              <div class="sp-tt-time-label" style="top:<%= (h - startHour) * 60 * pxPerMin + topPad %>px;"><%= String(h).padStart(2,'0') %>:00</div>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- Day columns -->
+        <% sd.days.forEach(day => {
+          const dayBlocks = sd.blocks.filter(b => b.day === day).sort((a,b) => a.start.localeCompare(b.start));
+        %>
+          <div class="sp-tt-day-col">
+            <div class="sp-tt-day-header">
+              <span data-lang="ko"><%= day %></span>
+              <span data-lang="en" style="display:none;"><%= dayMap[day] || day %></span>
+            </div>
+            <div class="sp-tt-day-body" style="height:<%= bodyH %>px;">
+              <% for (let h = startHour; h < endHour; h++) { %>
+                <div class="sp-tt-hour-line" style="top:<%= (h - startHour) * 60 * pxPerMin + topPad %>px;"></div>
+              <% } %>
+              <% dayBlocks.forEach(block => {
+                const bsh = parseInt(block.start.split(':')[0]);
+                const bsm = parseInt(block.start.split(':')[1] || 0);
+                const beh = parseInt(block.end.split(':')[0]);
+                const bem = parseInt(block.end.split(':')[1] || 0);
+                const topPx = ((bsh - startHour) * 60 + bsm) * pxPerMin + topPad;
+                const heightPx = ((beh * 60 + bem) - (bsh * 60 + bsm)) * pxPerMin;
+              %>
+                <div class="sp-tt-block" style="top:<%= topPx %>px;height:<%= heightPx %>px;background:linear-gradient(<%= block.color %>22,<%= block.color %>22),#fff;border-left:3px solid <%= block.color %>;">
+                  <div class="sp-tt-block-name" style="color:<%= block.color %>;">
+                    <span data-lang="ko"><%= t(block.subject, 'ko') %></span>
+                    <span data-lang="en" style="display:none;"><%= t(block.subject, 'en') %></span>
+                  </div>
+                  <div class="sp-tt-block-time"><%= block.start %> - <%= block.end %></div>
+                </div>
+              <% }); %>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+  </div>
+</section>
+<% } %>
+
+<!-- Syllabus Section -->
+<% if (syl.subjects && syl.subjects.length > 0) { %>
+<section class="sp-section sp-section-alt">
+  <div class="sp-container">
+    <h2 class="sp-section-title" style="color: <%= theme.heroBg || '#1a1a2e' %>;">
+      <span data-lang="ko">교과 과정</span>
+      <span data-lang="en" style="display:none;">Syllabus</span>
+    </h2>
+
+    <div class="sp-syllabus-tabs" id="spSyllabusTabs">
+      <% syl.subjects.forEach((subj, idx) => { %>
+        <button class="sp-tab-btn <%= idx === 0 ? 'active' : '' %>" data-tab="<%= idx %>" style="--accent: <%= accentOnLight %>;">
+          <span data-lang="ko"><%= t(subj.name, 'ko') %></span>
+          <span data-lang="en" style="display:none;"><%= t(subj.name, 'en') %></span>
+        </button>
+      <% }); %>
+    </div>
+
+    <% syl.subjects.forEach((subj, idx) => { %>
+      <div class="sp-syllabus-panel <%= idx === 0 ? 'active' : '' %>" data-panel="<%= idx %>">
+        <div class="sp-syllabus-header">
+          <h3>
+            <span data-lang="ko"><%= t(subj.name, 'ko') %></span>
+            <span data-lang="en" style="display:none;"><%= t(subj.name, 'en') %></span>
+          </h3>
+          <p class="sp-syllabus-desc">
+            <span data-lang="ko"><%= t(subj.description, 'ko') %></span>
+            <span data-lang="en" style="display:none;"><%= t(subj.description, 'en') %></span>
+          </p>
+        </div>
+
+        <% if (t(subj.promo, 'ko') || t(subj.promo, 'en')) { %>
+          <div class="sp-syllabus-promo">
+            <span data-lang="ko"><%= t(subj.promo, 'ko') %></span>
+            <span data-lang="en" style="display:none;"><%= t(subj.promo, 'en') %></span>
+          </div>
+        <% } %>
+
+        <% if (subj.highlights && subj.highlights.length > 0) { %>
+          <div class="sp-syllabus-highlights">
+            <h4>
+              <span data-lang="ko">주요 토픽</span>
+              <span data-lang="en" style="display:none;">Key Topics</span>
+            </h4>
+            <ul>
+              <% subj.highlights.forEach(h => { %>
+                <li>
+                  <span data-lang="ko"><%= t(h, 'ko') %></span>
+                  <span data-lang="en" style="display:none;"><%= t(h, 'en') %></span>
+                </li>
+              <% }); %>
+            </ul>
+          </div>
+        <% } %>
+
+        <% if (t(subj.placement, 'ko') || t(subj.placement, 'en')) { %>
+          <div class="sp-syllabus-placement">
+            <strong>
+              <span data-lang="ko">배치 기준:</span>
+              <span data-lang="en" style="display:none;">Placement:</span>
+            </strong>
+            <span data-lang="ko"><%= t(subj.placement, 'ko') %></span>
+            <span data-lang="en" style="display:none;"><%= t(subj.placement, 'en') %></span>
+          </div>
+        <% } %>
+
+        <% if (subj.weeklyPlan && subj.weeklyPlan.length > 0) { %>
+          <div class="sp-weekly-plan">
+            <h4>
+              <span data-lang="ko">주별 계획</span>
+              <span data-lang="en" style="display:none;">Weekly Plan</span>
+            </h4>
+            <div class="sp-weekly-grid">
+              <% subj.weeklyPlan.forEach(wp => { %>
+                <div class="sp-weekly-item" style="border-left-color: <%= accentOnLight %>;">
+                  <div class="sp-weekly-week"><%= wp.week %></div>
+                  <div class="sp-weekly-topic">
+                    <span data-lang="ko"><%= t(wp.topic, 'ko') %></span>
+                    <span data-lang="en" style="display:none;"><%= t(wp.topic, 'en') %></span>
+                  </div>
+                </div>
+              <% }); %>
+            </div>
+          </div>
+        <% } %>
+      </div>
+    <% }); %>
+  </div>
+</section>
+<% } %>
+
+<!-- Footer -->
+<footer class="sp-footer" style="background: <%= theme.heroBg || '#1a1a2e' %>;">
+  <div class="sp-container">
+    <div class="sp-footer-inner">
+      <div class="sp-footer-brand">Kevin Academy</div>
+      <div class="sp-footer-copy">&copy; 2026 Kevin Academy. All rights reserved.</div>
+    </div>
+  </div>
+</footer>
+
+<!-- Export bar -->
+<div class="sp-export-bar">
+  <button class="sp-export-btn" id="spExportPng">PNG</button>
+  <button class="sp-export-btn" id="spExportPdf">PDF</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="/js/schedule-public.js"></script>
+</body>
+</html>

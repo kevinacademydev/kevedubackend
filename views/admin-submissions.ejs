@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>최근 과제 제출 - 케빈아카데미</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="student-layout">
+    <%- include('partials/admin-sidebar', { activePage: 'submissions' }) %>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <main class="student-main">
+      <div class="student-topbar">
+        <button class="hamburger-btn" id="hamburgerBtn">&#9776;</button>
+        <h2 class="topbar-title">최근 과제 제출</h2>
+      </div>
+
+      <div class="student-content">
+        <div class="card">
+          <div class="card-header">
+            <h3>과제 제출 목록 (<%= showAll ? '전체' : '최근 100건' %>)</h3>
+            <div>
+              <input type="text" id="submissionSearch" placeholder="학생명, 수업명, 파일명 검색..." style="padding:0.4rem 0.75rem;border:1px solid #ddd;border-radius:6px;font-size:0.85rem;width:220px;">
+            </div>
+          </div>
+          <div class="card-body">
+            <% if (submissions.length === 0) { %>
+              <p class="empty-message">최근 과제 제출이 없습니다.</p>
+            <% } else { %>
+              <div class="table-responsive">
+                <table class="table" id="submissionsTable">
+                  <thead>
+                    <tr>
+                      <th>학생 ID</th>
+                      <th>학생명</th>
+                      <th>수업</th>
+                      <th>파일명</th>
+                      <th>제출일시</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% submissions.forEach(s => { %>
+                      <tr>
+                        <td><a href="/admin/student/<%= s.student_id %>" class="student-link"><%= s.username %></a></td>
+                        <td><%= s.student_name %></td>
+                        <td><a href="/admin/class/<%= s.class_id %>"><%= s.class_name %></a></td>
+                        <td><%= s.file_name %></td>
+                        <td><%= s.submitted_at %></td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              </div>
+              <% if (!showAll && submissions.length >= 100) { %>
+                <div style="text-align:center;margin-top:1rem;">
+                  <a href="/admin/submissions?all=1" class="btn btn-outline">전체 내역 보기</a>
+                </div>
+              <% } %>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const search = document.getElementById('submissionSearch');
+      if (search) {
+        search.addEventListener('input', () => {
+          const q = search.value.toLowerCase();
+          document.querySelectorAll('#submissionsTable tbody tr').forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+          });
+        });
+      }
+    });
+  </script>
+</body>
+</html>

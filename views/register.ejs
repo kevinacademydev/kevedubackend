@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>회원가입 - 찬우 수학학원</title>
+  <title>회원가입 - 케빈아카데미</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -11,33 +11,26 @@
     <div class="auth-card auth-card-wide">
       <div class="auth-header">
         <h1>회원가입</h1>
-        <p>찬우 수학학원 첨삭 관리 시스템</p>
+        <p>케빈아카데미 첨삭 관리 시스템</p>
       </div>
 
       <% if (error) { %>
         <div class="alert alert-error"><%= error %></div>
       <% } %>
-      <% if (success) { %>
-        <div class="alert alert-success"><%= success %></div>
-      <% } %>
 
       <form action="/auth/register" method="POST" class="auth-form">
         <div class="form-row">
           <div class="form-group">
-            <label for="student_id">학생 ID *</label>
-            <input type="text" id="student_id" name="student_id" placeholder="student0001" required pattern="student\d{4}">
-          </div>
-          <div class="form-group">
             <label for="name">이름 *</label>
             <input type="text" id="name" name="name" placeholder="홍길동" required>
+          </div>
+          <div class="form-group">
+            <label for="name_en">영문 이름 *</label>
+            <input type="text" id="name_en" name="name_en" placeholder="James Hong" required>
           </div>
         </div>
 
         <div class="form-row">
-          <div class="form-group">
-            <label for="birth_date">생년월일</label>
-            <input type="date" id="birth_date" name="birth_date">
-          </div>
           <div class="form-group">
             <label for="gender">성별</label>
             <select id="gender" name="gender">
@@ -46,22 +39,32 @@
               <option value="여">여</option>
             </select>
           </div>
+          <div class="form-group">
+            <label for="birth_date">생년월일</label>
+            <input type="date" id="birth_date" name="birth_date">
+          </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
-            <label for="school">학교</label>
-            <input type="text" id="school" name="school" placeholder="OO중학교">
+            <label for="grade">학년</label>
+            <input type="number" id="grade" name="grade" placeholder="예: 9" min="1" max="13">
           </div>
           <div class="form-group">
-            <label for="classes">수강 과목</label>
-            <input type="text" id="classes" name="classes" placeholder="수학 기초">
+            <label for="school">학교</label>
+            <input type="text" id="school" name="school" placeholder="학교명">
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="parent_phone">학부모 연락처</label>
-          <input type="tel" id="parent_phone" name="parent_phone" placeholder="010-1234-5678">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="email">이메일</label>
+            <input type="email" id="email" name="email" placeholder="example@email.com">
+          </div>
+          <div class="form-group">
+            <label for="parent_phone">학부모 연락처</label>
+            <input type="tel" id="parent_phone" name="parent_phone" placeholder="010-1234-5678">
+          </div>
         </div>
 
         <div class="form-row">

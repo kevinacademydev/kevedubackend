@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>통계 - 케빈아카데미</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 1.25rem;
+      text-align: center;
+    }
+    .stat-card .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #2563eb;
+    }
+    .stat-card .stat-label {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-top: 0.25rem;
+    }
+    .bar-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 1rem;
+      height: 200px;
+      padding: 1rem 0;
+    }
+    .bar-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      justify-content: flex-end;
+    }
+    .bar-bars {
+      display: flex;
+      gap: 4px;
+      align-items: flex-end;
+      width: 100%;
+      justify-content: center;
+      flex: 1;
+    }
+    .bar {
+      width: 24px;
+      border-radius: 4px 4px 0 0;
+      min-height: 4px;
+      transition: height 0.3s;
+    }
+    .bar-submission {
+      background: #3b82f6;
+    }
+    .bar-graded {
+      background: #10b981;
+    }
+    .bar-label {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 0.5rem;
+      white-space: nowrap;
+    }
+    .bar-value {
+      font-size: 0.7rem;
+      color: #374151;
+      margin-bottom: 2px;
+      text-align: center;
+    }
+    .chart-legend {
+      display: flex;
+      gap: 1.5rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.8rem;
+    }
+    .chart-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .chart-legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="student-layout">
+    <%- include('partials/admin-sidebar', { activePage: 'stats' }) %>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <main class="student-main">
+      <div class="student-topbar">
+        <button class="hamburger-btn" id="hamburgerBtn">&#9776;</button>
+        <h2 class="topbar-title">통계</h2>
+      </div>
+
+      <div class="student-content">
+        <!-- 요약 카드 -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value"><%= activeClassCount %></div>
+            <div class="stat-label">활성 수업</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value"><%= uniqueStudentCount %></div>
+            <div class="stat-label">학생 수</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value"><%= enrollmentCount %></div>
+            <div class="stat-label">구좌 수</div>
+          </div>
+          <% if (userRole === 'admin') { %>
+          <div class="stat-card">
+            <div class="stat-value"><%= teacherCount %></div>
+            <div class="stat-label">강사 수</div>
+          </div>
+          <% } %>
+        </div>
+
+        <!-- 수업별 현황 -->
+        <div class="card" style="margin-bottom:1.5rem;">
+          <div class="card-header">
+            <h3>수업별 현황</h3>
+          </div>
+          <div class="card-body">
+            <% if (classStats.length === 0) { %>
+              <p class="empty-message">수업 데이터가 없습니다.</p>
+            <% } else { %>
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>수업명</th>
+                      <th>유형</th>
+                      <th>상태</th>
+                      <th>학생 수</th>
+                      <th>과제 건수</th>
+                      <th>채점 건수</th>
+                      <th>평균 점수</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% classStats.forEach(cs => { %>
+                      <tr>
+                        <td><a href="/admin/class/<%= cs.id %>"><%= cs.name %></a></td>
+                        <td><%= cs.type === 'regular' ? '정규' : cs.type === 'team' ? '그룹' : '개인' %></td>
+                        <td><span class="badge <%= cs.status === 'active' ? '' : 'badge-inactive' %>"><%= cs.status === 'active' ? '활성' : '비활성' %></span></td>
+                        <td><%= cs.student_count %></td>
+                        <td><%= cs.submission_count %></td>
+                        <td><%= cs.graded_count %></td>
+                        <td><%= cs.avg_score != null ? cs.avg_score : '-' %></td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              </div>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- 점수 통계 -->
+        <div class="card" style="margin-bottom:1.5rem;">
+          <div class="card-header">
+            <h3>점수 통계</h3>
+          </div>
+          <div class="card-body">
+            <% if (scoreStats.length === 0) { %>
+              <p class="empty-message">점수 데이터가 없습니다.</p>
+            <% } else { %>
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>수업명</th>
+                      <th>평균 점수</th>
+                      <th>최저 점수</th>
+                      <th>최고 점수</th>
+                      <th>채점 건수</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% scoreStats.forEach(ss => { %>
+                      <tr>
+                        <td><%= ss.name %></td>
+                        <td><%= ss.avg_score %></td>
+                        <td><%= ss.min_score %></td>
+                        <td><%= ss.max_score %></td>
+                        <td><%= ss.score_count %>건</td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              </div>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- 월별 트렌드 -->
+        <div class="card">
+          <div class="card-header">
+            <h3>월별 트렌드</h3>
+          </div>
+          <div class="card-body">
+            <% if (monthlyTrend.length === 0) { %>
+              <p class="empty-message">트렌드 데이터가 없습니다.</p>
+            <% } else { %>
+              <div class="chart-legend">
+                <div class="chart-legend-item">
+                  <div class="chart-legend-dot" style="background:#3b82f6;"></div>
+                  <span>과제 제출</span>
+                </div>
+                <div class="chart-legend-item">
+                  <div class="chart-legend-dot" style="background:#10b981;"></div>
+                  <span>채점 업로드</span>
+                </div>
+              </div>
+              <%
+                let maxVal = 1;
+                monthlyTrend.forEach(m => {
+                  if (m.submission_count > maxVal) maxVal = m.submission_count;
+                  if (m.graded_count > maxVal) maxVal = m.graded_count;
+                });
+              %>
+              <div class="bar-chart">
+                <% monthlyTrend.forEach(m => { %>
+                  <div class="bar-group">
+                    <div class="bar-bars">
+                      <div>
+                        <div class="bar-value"><%= m.submission_count %></div>
+                        <div class="bar bar-submission" style="height:<%= Math.max((m.submission_count / maxVal) * 150, 4) %>px;"></div>
+                      </div>
+                      <div>
+                        <div class="bar-value"><%= m.graded_count %></div>
+                        <div class="bar bar-graded" style="height:<%= Math.max((m.graded_count / maxVal) * 150, 4) %>px;"></div>
+                      </div>
+                    </div>
+                    <div class="bar-label"><%= m.month %></div>
+                  </div>
+                <% }) %>
+              </div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

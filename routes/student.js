@@ -3,7 +3,6 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const { getDB, saveDB } = require('../db/database');
-const { notifyExtraRequestStatus } = require('../utils/sms');
 
 // 학생 인증 미들웨어
 function requireStudent(req, res, next) {
@@ -21,13 +20,13 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
-    cb(null, `hw-${req.session.user.student_id}-${uniqueSuffix}${ext}`);
+    cb(null, `hw-${req.session.user.username}-${uniqueSuffix}${ext}`);
   }
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = ['.pdf', '.jpg', '.jpeg', '.png'];
     const ext = path.extname(file.originalname).toLowerCase();
@@ -39,138 +38,155 @@ const upload = multer({
   }
 });
 
-// Multer 설정 - 추가 첨삭 파일 업로드
-const extraStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '..', 'uploads', 'extra'));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, `extra-${req.session.user.student_id}-${uniqueSuffix}${ext}`);
-  }
-});
-
-const extraUpload = multer({
-  storage: extraStorage,
-  limits: { fileSize: 50 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const allowed = ['.pdf', '.jpg', '.jpeg', '.png'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) {
-      cb(null, true);
-    } else {
-      cb(new Error('PDF, JPG, PNG 파일만 업로드 가능합니다.'));
-    }
-  }
-});
-
-// GET /student - 학생 대시보드
+// GET /student - 대시보드 (내 수업 목록)
 router.get('/', requireStudent, (req, res) => {
   const db = getDB();
   const userId = req.session.user.id;
 
-  // 내 과제 제출 목록
-  const subStmt = db.prepare('SELECT * FROM submissions WHERE user_id = ? ORDER BY submitted_at DESC');
-  subStmt.bind([userId]);
-  const submissions = [];
-  while (subStmt.step()) {
-    submissions.push(subStmt.getAsObject());
-  }
-  subStmt.free();
-
-  // 내 채점 파일 목록
-  const gradeStmt = db.prepare('SELECT * FROM graded_files WHERE user_id = ? ORDER BY uploaded_at DESC');
-  gradeStmt.bind([userId]);
-  const gradedFiles = [];
-  while (gradeStmt.step()) {
-    gradedFiles.push(gradeStmt.getAsObject());
-  }
-  gradeStmt.free();
-
-  // 새 채점 파일 수
-  const newCountStmt = db.prepare('SELECT COUNT(*) as cnt FROM graded_files WHERE user_id = ? AND is_new = 1');
-  newCountStmt.bind([userId]);
-  newCountStmt.step();
-  const newCount = newCountStmt.getAsObject().cnt;
-  newCountStmt.free();
-
-  // 추가 첨삭 요청 목록
-  const extraStmt = db.prepare(`
-    SELECT er.*, GROUP_CONCAT(erf.file_name, ', ') as file_names
-    FROM extra_requests er
-    LEFT JOIN extra_request_files erf ON er.id = erf.request_id
-    WHERE er.user_id = ?
-    GROUP BY er.id
-    ORDER BY er.requested_at DESC
+  // 내 수업 목록
+  const classStmt = db.prepare(`
+    SELECT c.id, c.name, c.type, ce.status,
+      (SELECT COUNT(*) FROM submissions s WHERE s.class_id = c.id AND s.student_id = ?) as submission_count,
+      (SELECT COUNT(*) FROM graded_files g WHERE g.class_id = c.id AND g.student_id = ?) as graded_count,
+      (SELECT COUNT(*) FROM graded_files g WHERE g.class_id = c.id AND g.student_id = ? AND g.is_new = 1) as new_graded_count
+    FROM class_enrollments ce
+    JOIN classes c ON ce.class_id = c.id
+    WHERE ce.student_id = ? AND ce.status = 'active'
+    ORDER BY c.name ASC
   `);
-  extraStmt.bind([userId]);
-  const extraRequests = [];
-  while (extraStmt.step()) {
-    extraRequests.push(extraStmt.getAsObject());
-  }
-  extraStmt.free();
-
-  // 내 수업별 점수 데이터 (그래프용)
-  const classStmt = db.prepare('SELECT * FROM student_classes WHERE user_id = ? ORDER BY status ASC, class_name ASC');
-  classStmt.bind([userId]);
+  classStmt.bind([userId, userId, userId, userId]);
   const myClasses = [];
-  while (classStmt.step()) {
-    myClasses.push(classStmt.getAsObject());
-  }
+  while (classStmt.step()) myClasses.push(classStmt.getAsObject());
   classStmt.free();
 
-  const classesWithScores = myClasses.map(cls => {
-    // 내 점수
-    const scoreStmt = db.prepare('SELECT session_number, score FROM class_scores WHERE student_class_id = ? ORDER BY session_number');
-    scoreStmt.bind([cls.id]);
-    const scores = {};
-    while (scoreStmt.step()) {
-      const row = scoreStmt.getAsObject();
-      scores[row.session_number] = row.score;
-    }
-    scoreStmt.free();
+  // 피드백
+  const fbStmt = db.prepare(`
+    SELECT sf.*, u.name as author_name
+    FROM student_feedbacks sf JOIN users u ON sf.author_id = u.id
+    WHERE sf.student_id = ?
+    ORDER BY sf.created_at DESC LIMIT 5
+  `);
+  fbStmt.bind([userId]);
+  const feedbacks = [];
+  while (fbStmt.step()) feedbacks.push(fbStmt.getAsObject());
+  fbStmt.free();
 
-    // 같은 수업을 듣는 모든 학생의 회차별 점수 (평균 + 등수 계산용)
-    const allStmt = db.prepare(`
-      SELECT cs.session_number, cs.score
-      FROM class_scores cs
-      JOIN student_classes sc ON cs.student_class_id = sc.id
-      WHERE sc.class_name = ?
-      ORDER BY cs.session_number, cs.score DESC
-    `);
-    allStmt.bind([cls.class_name]);
-    const sessionScores = {}; // { session: [score1, score2, ...] }
-    while (allStmt.step()) {
-      const row = allStmt.getAsObject();
-      if (!sessionScores[row.session_number]) sessionScores[row.session_number] = [];
-      sessionScores[row.session_number].push(row.score);
-    }
-    allStmt.free();
-
-    // 회차별 평균, 등수, 총 인원 계산
-    const averages = {};
-    const ranks = {};
-    const totalStudents = {};
-    for (const [session, allScores] of Object.entries(sessionScores)) {
-      const avg = allScores.reduce((a, b) => a + b, 0) / allScores.length;
-      averages[session] = Math.round(avg * 10) / 10;
-      totalStudents[session] = allScores.length;
-      // 등수: 내 점수보다 높은 사람 수 + 1
-      if (scores[session] !== undefined) {
-        const rank = allScores.filter(s => s > scores[session]).length + 1;
-        ranks[session] = rank;
-      }
-    }
-
-    return { ...cls, scores, averages, ranks, totalStudents };
-  });
-
-  res.render('student-dashboard', { submissions, gradedFiles, newCount, extraRequests, myClasses: classesWithScores });
+  res.render('student-dashboard', { myClasses, feedbacks });
 });
 
-// POST /student/upload - 과제 제출
-router.post('/upload', requireStudent, (req, res) => {
+// GET /student/class/:classId - 수업 상세
+router.get('/class/:classId', requireStudent, (req, res) => {
+  const db = getDB();
+  const userId = req.session.user.id;
+  const classId = parseInt(req.params.classId, 10);
+
+  // 등록 확인
+  const enrollStmt = db.prepare("SELECT id FROM class_enrollments WHERE class_id = ? AND student_id = ? AND status = 'active'");
+  enrollStmt.bind([classId, userId]);
+  if (!enrollStmt.step()) {
+    enrollStmt.free();
+    return res.status(403).send('등록되지 않은 수업입니다.');
+  }
+  enrollStmt.free();
+
+  // 수업 정보
+  const clsStmt = db.prepare('SELECT * FROM classes WHERE id = ?');
+  clsStmt.bind([classId]);
+  if (!clsStmt.step()) { clsStmt.free(); return res.status(404).send('수업을 찾을 수 없습니다.'); }
+  const cls = clsStmt.getAsObject();
+  clsStmt.free();
+
+  // 내 과제 제출
+  const subStmt = db.prepare('SELECT * FROM submissions WHERE class_id = ? AND student_id = ? ORDER BY submitted_at DESC');
+  subStmt.bind([classId, userId]);
+  const submissions = [];
+  while (subStmt.step()) submissions.push(subStmt.getAsObject());
+  subStmt.free();
+
+  // 내 채점 파일
+  const grStmt = db.prepare('SELECT * FROM graded_files WHERE class_id = ? AND student_id = ? ORDER BY uploaded_at DESC');
+  grStmt.bind([classId, userId]);
+  const gradedFiles = [];
+  while (grStmt.step()) gradedFiles.push(grStmt.getAsObject());
+  grStmt.free();
+
+  // 수업 일정 목록 (점수 컬럼용)
+  const classSchedules = [];
+  const csStmt = db.prepare('SELECT id, schedule_date, description, start_time FROM class_schedules WHERE class_id = ? ORDER BY schedule_date, start_time, id');
+  csStmt.bind([classId]);
+  while (csStmt.step()) classSchedules.push(csStmt.getAsObject());
+  csStmt.free();
+
+  // 내 점수 (schedule_id 기준)
+  const myScores = {};
+  const scStmt = db.prepare('SELECT schedule_id, score FROM class_scores WHERE class_id = ? AND student_id = ? ORDER BY schedule_id');
+  scStmt.bind([classId, userId]);
+  while (scStmt.step()) {
+    const row = scStmt.getAsObject();
+    myScores[row.schedule_id] = row.score;
+  }
+  scStmt.free();
+
+  // 같은 수업 전체 학생 점수 (평균/등수 계산용)
+  const allScoresStmt = db.prepare(`
+    SELECT cs.schedule_id, cs.score
+    FROM class_scores cs
+    JOIN class_enrollments ce ON cs.class_id = ce.class_id AND cs.student_id = ce.student_id
+    WHERE cs.class_id = ? AND ce.status = 'active'
+    ORDER BY cs.schedule_id, cs.score DESC
+  `);
+  allScoresStmt.bind([classId]);
+  const sessionScores = {};
+  while (allScoresStmt.step()) {
+    const row = allScoresStmt.getAsObject();
+    if (!sessionScores[row.schedule_id]) sessionScores[row.schedule_id] = [];
+    sessionScores[row.schedule_id].push(row.score);
+  }
+  allScoresStmt.free();
+
+  const averages = {};
+  const ranks = {};
+  const totalStudents = {};
+  for (const [schedId, allScrs] of Object.entries(sessionScores)) {
+    const avg = allScrs.reduce((a, b) => a + b, 0) / allScrs.length;
+    averages[schedId] = Math.round(avg * 10) / 10;
+    totalStudents[schedId] = allScrs.length;
+    if (myScores[schedId] !== undefined) {
+      ranks[schedId] = allScrs.filter(s => s > myScores[schedId]).length + 1;
+    }
+  }
+
+  // 사이드바용 내 수업 목록
+  const myClassesStmt = db.prepare(`
+    SELECT c.id, c.name, c.type
+    FROM class_enrollments ce
+    JOIN classes c ON ce.class_id = c.id
+    WHERE ce.student_id = ? AND ce.status = 'active'
+    ORDER BY c.name ASC
+  `);
+  myClassesStmt.bind([userId]);
+  const myClasses = [];
+  while (myClassesStmt.step()) myClasses.push(myClassesStmt.getAsObject());
+  myClassesStmt.free();
+
+  res.render('student-class', { cls, submissions, gradedFiles, classSchedules, myScores, averages, ranks, totalStudents, myClasses });
+});
+
+// POST /student/class/:classId/upload - 수업별 과제 제출
+router.post('/class/:classId/upload', requireStudent, (req, res) => {
+  const classId = parseInt(req.params.classId, 10);
+  const userId = req.session.user.id;
+
+  // Verify enrollment
+  const db = getDB();
+  const enrollStmt = db.prepare("SELECT id FROM class_enrollments WHERE class_id = ? AND student_id = ? AND status = 'active'");
+  enrollStmt.bind([classId, userId]);
+  if (!enrollStmt.step()) {
+    enrollStmt.free();
+    return res.status(403).json({ error: '등록되지 않은 수업입니다.' });
+  }
+  enrollStmt.free();
+
   upload.array('files', 10)(req, res, (err) => {
     if (err) {
       if (err instanceof multer.MulterError && err.code === 'LIMIT_UNEXPECTED_FILE') {
@@ -183,37 +199,77 @@ router.post('/upload', requireStudent, (req, res) => {
       return res.status(400).json({ error: '파일을 선택해주세요.' });
     }
 
-    const db = getDB();
-    const userId = req.session.user.id;
-
+    const db2 = getDB();
     req.files.forEach(file => {
-      // 한글 파일명 인코딩 보정
       const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-      db.run(
-        'INSERT INTO submissions (user_id, file_name, file_path) VALUES (?, ?, ?)',
-        [userId, originalName, file.path]
+      db2.run(
+        'INSERT INTO submissions (class_id, student_id, file_name, file_path) VALUES (?, ?, ?, ?)',
+        [classId, userId, originalName, file.path]
       );
     });
     saveDB();
-
     res.json({ success: true, count: req.files.length });
   });
 });
 
-// GET /student/file/:id - 채점 파일 다운로드 (+ is_new 업데이트)
+// GET /student/class/:classId/schedules - 수업 일정 조회 (읽기 전용)
+router.get('/class/:classId/schedules', requireStudent, (req, res) => {
+  const db = getDB();
+  const userId = req.session.user.id;
+  const classId = parseInt(req.params.classId, 10);
+
+  // 등록 확인
+  const enrollStmt = db.prepare("SELECT id FROM class_enrollments WHERE class_id = ? AND student_id = ? AND status = 'active'");
+  enrollStmt.bind([classId, userId]);
+  if (!enrollStmt.step()) {
+    enrollStmt.free();
+    return res.status(403).json({ error: '등록되지 않은 수업입니다.' });
+  }
+  enrollStmt.free();
+
+  const year = parseInt(req.query.year, 10);
+  const month = parseInt(req.query.month, 10);
+  if (!year || !month || month < 1 || month > 12) {
+    return res.status(400).json({ error: '유효하지 않은 날짜입니다.' });
+  }
+
+  const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+  const endDate = month === 12
+    ? `${year + 1}-01-01`
+    : `${year}-${String(month + 1).padStart(2, '0')}-01`;
+
+  // Count schedules before this month for seq numbering
+  const offsetStmt = db.prepare('SELECT COUNT(*) as cnt FROM class_schedules WHERE class_id = ? AND schedule_date < ?');
+  offsetStmt.bind([classId, startDate]);
+  offsetStmt.step();
+  const seqOffset = offsetStmt.getAsObject().cnt;
+  offsetStmt.free();
+
+  const stmt = db.prepare(
+    'SELECT * FROM class_schedules WHERE class_id = ? AND schedule_date >= ? AND schedule_date < ? ORDER BY schedule_date, start_time, id'
+  );
+  stmt.bind([classId, startDate, endDate]);
+  const schedules = [];
+  while (stmt.step()) schedules.push(stmt.getAsObject());
+  stmt.free();
+
+  schedules.forEach((s, i) => { s.seq = seqOffset + i + 1; });
+  res.json(schedules);
+});
+
+// GET /student/file/:id - 채점 파일 다운로드
 router.get('/file/:id', requireStudent, (req, res) => {
   const db = getDB();
   const userId = req.session.user.id;
   const fileId = req.params.id;
 
-  const stmt = db.prepare('SELECT * FROM graded_files WHERE id = ? AND user_id = ?');
+  const stmt = db.prepare('SELECT * FROM graded_files WHERE id = ? AND student_id = ?');
   stmt.bind([fileId, userId]);
 
   if (stmt.step()) {
     const file = stmt.getAsObject();
     stmt.free();
 
-    // 미확인 → 확인완료
     if (file.is_new === 1) {
       db.run('UPDATE graded_files SET is_new = 0 WHERE id = ?', [fileId]);
       saveDB();
@@ -226,80 +282,6 @@ router.get('/file/:id', requireStudent, (req, res) => {
     stmt.free();
     res.status(404).send('파일을 찾을 수 없습니다.');
   }
-});
-
-// POST /student/extra-request - 추가 첨삭 요청
-router.post('/extra-request', requireStudent, (req, res) => {
-  extraUpload.array('files', 10)(req, res, (err) => {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
-
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ error: '파일을 선택해주세요.' });
-    }
-
-    const pageCount = parseInt(req.body.page_count, 10);
-    if (!pageCount || pageCount < 1) {
-      return res.status(400).json({ error: '페이지 수를 올바르게 입력해주세요.' });
-    }
-
-    const db = getDB();
-    const userId = req.session.user.id;
-    const totalAmount = pageCount * 3000;
-
-    // 추가 첨삭 요청 생성
-    db.run(
-      'INSERT INTO extra_requests (user_id, page_count, total_amount) VALUES (?, ?, ?)',
-      [userId, pageCount, totalAmount]
-    );
-
-    // 방금 생성한 요청의 ID 조회
-    const idStmt = db.prepare('SELECT last_insert_rowid() as id');
-    idStmt.step();
-    const requestId = idStmt.getAsObject().id;
-    idStmt.free();
-
-    // 파일 정보 저장
-    req.files.forEach(file => {
-      const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-      db.run(
-        'INSERT INTO extra_request_files (request_id, file_name, file_path) VALUES (?, ?, ?)',
-        [requestId, originalName, file.path]
-      );
-    });
-
-    saveDB();
-    res.json({ success: true, requestId, totalAmount });
-  });
-});
-
-// POST /student/extra-request/:id/pay - 결제 완료 알림
-router.post('/extra-request/:id/pay', requireStudent, (req, res) => {
-  const db = getDB();
-  const userId = req.session.user.id;
-  const requestId = req.params.id;
-
-  const stmt = db.prepare('SELECT * FROM extra_requests WHERE id = ? AND user_id = ?');
-  stmt.bind([requestId, userId]);
-
-  if (!stmt.step()) {
-    stmt.free();
-    return res.status(404).json({ error: '요청을 찾을 수 없습니다.' });
-  }
-
-  const request = stmt.getAsObject();
-  stmt.free();
-
-  if (request.status !== 'payment_pending') {
-    return res.status(400).json({ error: '이미 처리된 요청입니다.' });
-  }
-
-  // 상태를 payment_sent로 변경 (결제했다고 알림)
-  db.run("UPDATE extra_requests SET status = 'payment_sent' WHERE id = ?", [requestId]);
-  saveDB();
-
-  res.json({ success: true, message: '결제 완료가 전달되었습니다. 관리자 확인 후 처리됩니다.' });
 });
 
 module.exports = router;

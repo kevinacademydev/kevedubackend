@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>시간표 편집 - 케빈아카데미</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="student-layout">
+    <%- include('partials/admin-sidebar', { activePage: 'schedule-pages' }) %>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <main class="student-main">
+      <div class="student-topbar">
+        <button class="hamburger-btn" id="hamburgerBtn">&#9776;</button>
+        <h2 class="topbar-title">시간표 편집</h2>
+        <div style="margin-left:auto;display:flex;gap:0.5rem;">
+          <% if (userRole !== 'admin') { %>
+            <button class="btn btn-sm btn-warning" id="seRequestReviewBtn">발행 신청하기</button>
+          <% } %>
+          <button class="btn btn-sm btn-outline" id="sePreviewBtn">미리보기</button>
+          <button class="btn btn-sm btn-primary" id="seSaveBtn">저장</button>
+        </div>
+      </div>
+
+      <div class="student-content" id="scheduleEditorPage"
+           data-page-id="<%= pageId || '' %>"
+           data-user-role="<%= userRole %>">
+
+        <div id="seSaveMsg" class="alert alert-success" style="display:none;"></div>
+
+        <!-- Owner info (admin editing teacher's page) -->
+        <div id="seOwnerInfo" class="se-owner-info" style="display:none;"></div>
+
+        <!-- Language Toggle -->
+        <div class="se-lang-toggle">
+          <button class="se-lang-btn active" data-lang="ko">KOR</button>
+          <button class="se-lang-btn" data-lang="en">ENG</button>
+        </div>
+
+        <!-- 1. Settings -->
+        <div class="se-section">
+          <button class="se-section-toggle active" data-target="seSettings">
+            <span>기본 설정</span>
+            <span class="se-arrow">&#9660;</span>
+          </button>
+          <div class="se-section-body open" id="seSettings">
+            <div class="form-row">
+              <div class="form-group">
+                <label>제목</label>
+                <input type="text" id="seTitle" placeholder="예: 2026 Summer Bootcamp">
+              </div>
+              <div class="form-group">
+                <label>Slug (URL)</label>
+                <input type="text" id="seSlug" placeholder="summer-bootcamp-2026">
+                <small style="color:var(--gray-500);">공개 URL: /p/<span id="seSlugPreview">-</span></small>
+              </div>
+            </div>
+            <div class="form-group" style="max-width:200px;">
+              <label>상태</label>
+              <select id="seStatus">
+                <option value="draft">초안 (Draft)</option>
+                <% if (userRole === 'admin') { %>
+                  <option value="private">비공개 (Private)</option>
+                  <option value="published">공개 (Published)</option>
+                <% } else { %>
+                  <option value="pending">심사 중 (Pending)</option>
+                <% } %>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Header/Hero -->
+        <div class="se-section">
+          <button class="se-section-toggle" data-target="seHeader">
+            <span>헤더 / 히어로</span>
+            <span class="se-arrow">&#9660;</span>
+          </button>
+          <div class="se-section-body" id="seHeader">
+            <div class="form-group">
+              <label>프로그램 제목</label>
+              <input type="text" id="seHeroProgramTitle" placeholder="2026 Summer Math Bootcamp">
+            </div>
+            <div class="form-group">
+              <label>부제</label>
+              <input type="text" id="seHeroSubtitle" placeholder="Intensive 8-Week Program">
+            </div>
+            <div class="form-group">
+              <label>설명</label>
+              <textarea id="seHeroDesc" rows="3" placeholder="프로그램 설명..."></textarea>
+            </div>
+
+            <div class="se-list-section">
+              <label>프로그램 카드</label>
+              <div id="seHeroCards"></div>
+              <button class="btn btn-sm btn-outline" id="seAddCard">+ 카드 추가</button>
+            </div>
+
+            <div class="se-list-section">
+              <label>하이라이트</label>
+              <div id="seHeroHighlights"></div>
+              <button class="btn btn-sm btn-outline" id="seAddHighlight">+ 하이라이트 추가</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Schedule Table -->
+        <div class="se-section">
+          <button class="se-section-toggle" data-target="seSchedule">
+            <span>시간표 (Schedule)</span>
+            <span class="se-arrow">&#9660;</span>
+          </button>
+          <div class="se-section-body" id="seSchedule">
+            <div class="se-list-section">
+              <label>요일 선택</label>
+              <div id="seDaysCheck" class="se-days-check">
+                <label><input type="checkbox" value="월" checked> 월</label>
+                <label><input type="checkbox" value="화" checked> 화</label>
+                <label><input type="checkbox" value="수" checked> 수</label>
+                <label><input type="checkbox" value="목" checked> 목</label>
+                <label><input type="checkbox" value="금" checked> 금</label>
+                <label><input type="checkbox" value="토"> 토</label>
+                <label><input type="checkbox" value="일"> 일</label>
+              </div>
+            </div>
+
+            <div class="se-list-section">
+              <label>수업 블록 (각 요일에 자유롭게 시간 추가)</label>
+              <div id="seBlockGrid" class="se-block-grid"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Syllabus -->
+        <div class="se-section">
+          <button class="se-section-toggle" data-target="seSyllabus">
+            <span>교과 과정 (Syllabus)</span>
+            <span class="se-arrow">&#9660;</span>
+          </button>
+          <div class="se-section-body" id="seSyllabus">
+            <div id="seSyllabusTabBar" class="se-syllabus-tabs"></div>
+            <button class="btn btn-sm btn-outline" id="seAddSubject" style="margin-bottom:1rem;">+ 과목 추가</button>
+            <div id="seSyllabusPanel"></div>
+          </div>
+        </div>
+
+        <!-- 5. Theme -->
+        <div class="se-section">
+          <button class="se-section-toggle" data-target="seTheme">
+            <span>테마 (Theme)</span>
+            <span class="se-arrow">&#9660;</span>
+          </button>
+          <div class="se-section-body" id="seTheme">
+            <div class="form-row">
+              <div class="form-group">
+                <label>히어로 배경색</label>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                  <input type="color" id="seThemeHeroBg" value="#133327" style="height:40px;flex-shrink:0;">
+                  <button type="button" class="btn btn-sm btn-outline" id="seThemeKevinPreset" style="white-space:nowrap;">케빈아카데미 테마 컬러 사용하기</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>강조색</label>
+                <input type="color" id="seThemeAccent" value="#ffffff" style="height:40px;">
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Block popup -->
+  <div id="seBlockPopup" class="se-cell-popup" style="display:none;">
+    <div class="se-cell-popup-inner">
+      <div class="se-popup-title" id="sePopupTitle">수업 추가</div>
+      <div class="form-group" style="margin-bottom:0.5rem;">
+        <label>과목명</label>
+        <input type="text" id="seBlockSubject" placeholder="SAT Math">
+      </div>
+      <div class="form-row" style="margin-bottom:0.5rem;">
+        <div class="form-group">
+          <label>시작</label>
+          <input type="time" id="seBlockStart" value="09:00">
+        </div>
+        <div class="form-group">
+          <label>종료</label>
+          <input type="time" id="seBlockEnd" value="10:00">
+        </div>
+      </div>
+      <div style="margin-bottom:0.75rem;">
+        <label style="font-size:0.85rem;font-weight:600;color:var(--gray-700);display:block;margin-bottom:0.35rem;">색상</label>
+        <div class="se-color-swatches" id="seBlockColors"></div>
+      </div>
+      <div style="display:flex;gap:0.5rem;">
+        <button class="btn btn-sm btn-primary" id="seBlockOk">확인</button>
+        <button class="btn btn-sm btn-danger" id="seBlockDelete" style="display:none;">삭제</button>
+        <button class="btn btn-sm btn-outline" id="seBlockCancel">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

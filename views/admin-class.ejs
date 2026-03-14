@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= cls.name %> - 수업 관리</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="student-layout">
+    <%- include('partials/admin-sidebar', { activePage: 'class', activeClassId: cls.id }) %>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <main class="student-main">
+      <div class="student-topbar">
+        <button class="hamburger-btn" id="hamburgerBtn">&#9776;</button>
+        <h2 class="topbar-title">
+          <%= cls.name %>
+          <span class="badge"><%= cls.type === 'regular' ? '정규' : cls.type === 'team' ? '그룹' : '개인' %></span>
+          <% if (cls.status === 'inactive') { %><span class="badge">비활성</span><% } %>
+        </h2>
+      </div>
+
+      <div class="student-content" id="adminClassPage"
+           data-class-id="<%= cls.id %>"
+           data-user-role="<%= userRole %>"
+           data-user-id="<%= userId %>">
+
+        <% if (userRole === 'admin') { %>
+        <div class="card" style="margin-bottom:1.5rem;">
+          <div class="card-header">
+            <h3>수업 설정</h3>
+          </div>
+          <div class="card-body">
+            <div class="form-row" style="align-items:flex-end;">
+              <div class="form-group">
+                <label>수업 이름</label>
+                <input type="text" id="editClassName" value="<%= cls.name %>">
+              </div>
+              <div class="form-group">
+                <label>유형</label>
+                <select id="editClassType">
+                  <option value="regular" <%= cls.type === 'regular' ? 'selected' : '' %>>정규</option>
+                  <option value="team" <%= cls.type === 'team' ? 'selected' : '' %>>그룹</option>
+                  <option value="private" <%= cls.type === 'private' ? 'selected' : '' %>>개인</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>상태</label>
+                <select id="editClassStatus">
+                  <option value="active" <%= cls.status === 'active' ? 'selected' : '' %>>활성</option>
+                  <option value="inactive" <%= cls.status === 'inactive' ? 'selected' : '' %>>비활성</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" id="btnEditClass">저장</button>
+              <button class="btn btn-danger" id="btnDeleteClass">삭제</button>
+            </div>
+          </div>
+        </div>
+        <% } %>
+
+        <!-- 수업 일정 캘린더 -->
+        <div class="card" style="margin-bottom:1.5rem;" id="calendarCard">
+          <div class="card-header">
+            <h3>수업 일정</h3>
+            <div class="calendar-nav">
+              <button class="btn btn-sm btn-outline" id="calPrev">&larr;</button>
+              <span id="calTitle" style="font-weight:600;font-size:1rem;min-width:120px;text-align:center;"></span>
+              <button class="btn btn-sm btn-outline" id="calNext">&rarr;</button>
+              <button class="btn btn-sm btn-outline" id="calToday" style="margin-left:0.5rem;">오늘</button>
+            </div>
+          </div>
+          <div class="card-body" style="padding:0.75rem;">
+            <div class="calendar-weekdays">
+              <div class="calendar-weekday">월</div>
+              <div class="calendar-weekday">화</div>
+              <div class="calendar-weekday">수</div>
+              <div class="calendar-weekday">목</div>
+              <div class="calendar-weekday">금</div>
+              <div class="calendar-weekday sat">토</div>
+              <div class="calendar-weekday sun">일</div>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <!-- Left column -->
+          <div>
+            <!-- 담당 강사 -->
+            <div class="card" style="margin-bottom:1.5rem;">
+              <div class="card-header">
+                <h3>담당 강사</h3>
+              </div>
+              <div class="card-body">
+                <% if (classTeachers.length === 0) { %>
+                  <p class="empty-message">배정된 강사가 없습니다.</p>
+                <% } else { %>
+                  <% classTeachers.forEach(t => { %>
+                    <div class="file-item">
+                      <span><%= t.name %> (<%= t.username %>)</span>
+                      <% if (userRole === 'admin') { %>
+                        <button class="btn btn-sm btn-danger btn-remove-teacher" data-tid="<%= t.id %>">해제</button>
+                      <% } %>
+                    </div>
+                  <% }) %>
+                <% } %>
+                <% if (userRole === 'admin') { %>
+                  <div class="add-class-row" style="margin-top:0.75rem;">
+                    <select id="addTeacherSelect" class="add-class-input">
+                      <option value="">강사 선택...</option>
+                      <% allTeachers.forEach(t => { %>
+                        <% if (!classTeachers.find(ct => ct.id === t.id)) { %>
+                          <option value="<%= t.id %>"><%= t.name %> (<%= t.username %>)</option>
+                        <% } %>
+                      <% }) %>
+                    </select>
+                    <button class="btn btn-sm btn-primary" id="btnAddTeacher">배정</button>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+
+            <!-- 등록 학생 -->
+            <div class="card" style="margin-bottom:1.5rem;">
+              <div class="card-header">
+                <h3>등록 학생 (<%= students.filter(s => s.enrollment_status === 'active').length %>명)</h3>
+              </div>
+              <div class="card-body">
+                <div class="student-list-scroll">
+                  <% if (students.length === 0) { %>
+                    <p class="empty-message">등록된 학생이 없습니다.</p>
+                  <% } else { %>
+                    <table class="table">
+                      <thead>
+                        <tr><th>이름</th><th>영문이름</th><th>상태</th><th></th></tr>
+                      </thead>
+                      <tbody>
+                        <% students.forEach(s => { %>
+                          <tr class="<%= s.enrollment_status === 'dropped' ? 'class-inactive' : '' %>">
+                            <td><a href="/admin/student/<%= s.id %>" class="student-link"><%= s.name %></a> <span style="color:var(--gray-500);font-size:0.8rem;"><%= s.username %></span></td>
+                            <td style="color:var(--gray-600);font-size:0.85rem;"><%= s.name_en || '-' %></td>
+                            <td><span class="badge"><%= s.enrollment_status === 'active' ? '등록' : '해제' %></span></td>
+                            <td>
+                              <% if (s.enrollment_status === 'active') { %>
+                                <button class="btn btn-sm btn-outline btn-unenroll" data-sid="<%= s.id %>">해제</button>
+                              <% } else { %>
+                                <button class="btn btn-sm btn-primary btn-reenroll" data-sid="<%= s.id %>">재등록</button>
+                              <% } %>
+                            </td>
+                          </tr>
+                        <% }) %>
+                      </tbody>
+                    </table>
+                  <% } %>
+                </div>
+                <% const activeCount = students.filter(s => s.enrollment_status === 'active').length; %>
+                <% if (cls.type !== 'private' || activeCount < 1) { %>
+                <div class="add-class-row" style="margin-top:0.75rem;">
+                  <select id="addStudentSelect" class="add-class-input">
+                    <option value="">학생 검색/선택...</option>
+                  </select>
+                  <button class="btn btn-sm btn-primary" id="btnEnrollStudent">등록</button>
+                </div>
+                <% } else { %>
+                <p style="margin-top:0.75rem; font-size:0.85rem; color:var(--gray-500);">개인 수업은 학생 1명만 등록할 수 있습니다.</p>
+                <% } %>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right column -->
+          <div>
+            <!-- 채점 파일 업로드 -->
+            <div class="card" style="margin-bottom:1.5rem;">
+              <div class="card-header">
+                <h3>채점 파일 업로드</h3>
+              </div>
+              <div class="card-body">
+                <div class="upload-info">
+                  <p>파일명에 학생번호 4자리를 포함해 주세요.</p>
+                  <p>예: <code>0001_math_hw1.pdf</code> → student0001에 자동 매칭</p>
+                </div>
+                <div class="dropzone" id="gradingDropzone">
+                  <div class="dropzone-icon">&#128195;</div>
+                  <p>채점 파일을 여기에 드래그하거나 클릭하세요</p>
+                  <p class="dropzone-hint">PDF, JPG, PNG (최대 5MB)</p>
+                  <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                </div>
+                <div id="gradingProgress" class="upload-progress" style="display:none;">
+                  <div class="progress-bar"><div class="progress-fill"></div></div>
+                  <span class="progress-text">업로드 중...</span>
+                </div>
+                <div id="gradingResults" class="upload-result"></div>
+              </div>
+            </div>
+
+            <!-- 과제 제출 목록 -->
+            <div class="card" style="margin-bottom:1.5rem;">
+              <div class="card-header">
+                <h3>과제 제출 목록</h3>
+              </div>
+              <div class="card-body">
+                <% if (submissions.length === 0) { %>
+                  <p class="empty-message">제출된 과제가 없습니다.</p>
+                <% } else { %>
+                  <div class="file-list student-list-scroll">
+                    <% submissions.forEach(s => { %>
+                      <div class="file-item">
+                        <div class="file-info">
+                          <span class="file-name"><%= s.student_name %> (<%= s.username %>) - <%= s.file_name %></span>
+                          <span class="file-date"><%= s.submitted_at %></span>
+                        </div>
+                        <a href="/admin/class/<%= cls.id %>/file/<%= s.id %>" class="btn btn-sm btn-outline">다운로드</a>
+                      </div>
+                    <% }) %>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+
+            <!-- 채점 파일 목록 -->
+            <div class="card" style="margin-bottom:1.5rem;">
+              <div class="card-header">
+                <h3>채점 파일 목록</h3>
+              </div>
+              <div class="card-body">
+                <% if (gradedFiles.length === 0) { %>
+                  <p class="empty-message">업로드된 채점 파일이 없습니다.</p>
+                <% } else { %>
+                  <div class="file-list student-list-scroll">
+                    <% gradedFiles.forEach(g => { %>
+                      <div class="file-item">
+                        <div class="file-info">
+                          <span class="file-name"><%= g.student_name %> (<%= g.username %>) - <%= g.file_name %></span>
+                          <span class="file-date"><%= g.uploader_name %> | <%= g.uploaded_at %></span>
+                        </div>
+                      </div>
+                    <% }) %>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 비고 -->
+        <div class="card" style="margin-top:1.5rem;">
+          <div class="card-header">
+            <h3>비고</h3>
+            <button class="btn btn-sm btn-primary" id="btnSaveNotes">저장</button>
+          </div>
+          <div class="card-body">
+            <div id="notesSaveResult" class="save-result" style="margin-bottom:0.5rem;"></div>
+            <textarea id="classNotes" rows="4" placeholder="수업에 대한 비고 사항을 입력하세요..."
+              style="width:100%;padding:0.65rem;border:1.5px solid var(--gray-300);border-radius:var(--radius);font-size:0.9rem;resize:vertical;font-family:inherit;"><%= cls.notes || '' %></textarea>
+          </div>
+        </div>
+
+        <!-- 점수 관리 -->
+        <div class="card" style="margin-top:1.5rem;">
+          <div class="card-header">
+            <h3>점수 관리</h3>
+            <button class="btn btn-sm btn-primary" id="btnSaveScores">점수 저장</button>
+          </div>
+          <div class="card-body">
+            <div id="scoresSaveResult" class="save-result" style="margin-bottom:0.5rem;"></div>
+            <% const activeStudents = students.filter(s => s.enrollment_status === 'active'); %>
+            <% if (classSchedules.length === 0) { %>
+              <p class="empty-message">수업 일정을 먼저 추가해주세요.</p>
+            <% } else if (activeStudents.length === 0) { %>
+              <p class="empty-message">등록된 학생이 없습니다.</p>
+            <% } else { %>
+              <div style="overflow-x:auto;">
+                <table class="table" id="scoresTable" style="table-layout:fixed;width:max-content;">
+                  <thead>
+                    <tr>
+                      <th style="position:sticky;left:0;background:#f8f9fa;z-index:2;width:120px;min-width:120px;">학생</th>
+                      <% classSchedules.forEach((sch, idx) => { %>
+                        <th style="text-align:center;width:54px;min-width:54px;padding:0.3rem 0.15rem;font-size:0.65rem;" title="<%= sch.description || '' %> (<%= sch.schedule_date %>)">
+                          <%= (idx + 1) %>회<br><span style="color:var(--gray-500);font-weight:400;"><%= sch.schedule_date.substring(5) %></span>
+                        </th>
+                      <% }) %>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% activeStudents.forEach(s => { %>
+                      <tr data-student-id="<%= s.id %>">
+                        <td style="position:sticky;left:0;background:white;z-index:1;white-space:nowrap;width:120px;min-width:120px;font-size:0.8rem;">
+                          <a href="/admin/student/<%= s.id %>" class="student-link"><%= s.name %></a> <span style="color:var(--gray-500);font-size:0.7rem;"><%= s.username.replace('student','') %></span>
+                        </td>
+                        <% classSchedules.forEach(sch => { %>
+                          <td style="padding:0.2rem;">
+                            <input type="number" class="score-input" data-schedule-id="<%= sch.id %>"
+                                   value="<%= scoreData[s.id] && scoreData[s.id][sch.id] !== undefined ? scoreData[s.id][sch.id] : '' %>"
+                                   min="0" max="100" placeholder="-">
+                          </td>
+                        <% }) %>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              </div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 일정 추가/수정 모달 -->
+  <div class="modal-overlay" id="scheduleModal" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="scheduleModalTitle">일정 추가</h3>
+        <button class="modal-close" id="scheduleModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label>날짜</label>
+          <input type="text" id="scheduleDate" readonly style="background:var(--gray-50);">
+        </div>
+        <div class="form-row" style="margin-bottom:0.75rem;">
+          <div class="form-group">
+            <label>시작 시간</label>
+            <input type="text" id="scheduleStartTime" placeholder="HH:MM" maxlength="5" style="font-variant-numeric:tabular-nums;">
+          </div>
+          <div class="form-group">
+            <label>종료 시간</label>
+            <input type="text" id="scheduleEndTime" placeholder="HH:MM" maxlength="5" style="font-variant-numeric:tabular-nums;">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label>수업 설명 <span style="color:var(--gray-500);font-weight:400;font-size:0.8rem;">(선택)</span></label>
+          <textarea id="scheduleDesc" rows="2" placeholder="수업 내용을 간단히 메모..."
+            style="width:100%;padding:0.5rem 0.75rem;border:1.5px solid var(--gray-300);border-radius:var(--radius);font-size:0.9rem;resize:vertical;font-family:inherit;"></textarea>
+        </div>
+        <div class="form-group" id="repeatGroup">
+          <label>반복</label>
+          <div class="repeat-row">
+            <span>이후</span>
+            <input type="number" id="scheduleRepeatWeeks" min="0" max="52" value="0" style="width:60px;text-align:center;">
+            <span>주 반복</span>
+          </div>
+          <span class="repeat-hint" id="repeatHint"></span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm btn-danger" id="btnDeleteSchedule" style="display:none;margin-right:auto;">삭제</button>
+        <button class="btn btn-sm btn-outline" id="btnCancelSchedule">취소</button>
+        <button class="btn btn-sm btn-primary" id="btnSaveSchedule">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

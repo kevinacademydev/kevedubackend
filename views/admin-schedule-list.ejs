@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>시간표 만들기 - 케빈아카데미</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="student-layout">
+    <%- include('partials/admin-sidebar', { activePage: 'schedule-pages' }) %>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <main class="student-main">
+      <div class="student-topbar">
+        <button class="hamburger-btn" id="hamburgerBtn">&#9776;</button>
+        <h2 class="topbar-title">시간표 만들기</h2>
+      </div>
+
+      <div class="student-content" id="scheduleListPage" data-user-role="<%= userRole %>">
+        <% const _pendingCount = typeof pendingCount !== 'undefined' ? pendingCount : 0; %>
+        <% const _maxSlots = typeof maxSlots !== 'undefined' ? maxSlots : 10; %>
+        <% const _myPages = typeof myPages !== 'undefined' ? myPages : (typeof pages !== 'undefined' ? pages : []); %>
+        <% const _teacherPages = typeof teacherPages !== 'undefined' ? teacherPages : []; %>
+
+        <% if (userRole === 'admin') { %>
+          <!-- Admin tab navigation -->
+          <div class="sp-tab-nav">
+            <button class="sp-tab-btn active" data-tab="my">내 시간표</button>
+            <button class="sp-tab-btn" data-tab="teacher">강사 제출 시간표<% if (_pendingCount > 0) { %> <span class="sp-pending-badge"><%= _pendingCount %></span><% } %></button>
+          </div>
+
+          <!-- Tab: My pages -->
+          <div class="sp-tab-content active" data-tab-content="my">
+            <div class="sp-slot-grid">
+              <% for (let slot = 1; slot <= _maxSlots; slot++) {
+                const page = _myPages.find(p => p.slot_number === slot);
+              %>
+              <div class="sp-slot-card <%= page ? 'sp-slot-filled' : 'sp-slot-empty' %>">
+                <div class="sp-slot-number">Slot <%= slot %></div>
+                <% if (page) { %>
+                  <div class="sp-slot-title"><%= page.title || '(제목 없음)' %></div>
+                  <div class="sp-slot-meta">
+                    <span class="sp-status-badge sp-status-<%= page.status %>">
+                      <%= page.status === 'published' ? '공개' : page.status === 'private' ? '비공개' : page.status === 'pending' ? '심사 중' : '초안' %>
+                    </span>
+                    <% if (page.slug) { %>
+                      <span class="sp-slug">/p/<%= page.slug %></span>
+                    <% } %>
+                  </div>
+                  <div class="sp-slot-actions">
+                    <a href="/admin/schedule-pages/<%= page.id %>/edit" class="btn btn-sm btn-primary">편집</a>
+                    <% if (page.slug && page.status === 'published') { %>
+                      <a href="/p/<%= page.slug %>" target="_blank" class="btn btn-sm btn-outline">보기</a>
+                    <% } %>
+                    <button class="btn btn-sm btn-danger sp-delete-btn" data-id="<%= page.id %>" data-title="<%= page.title %>">삭제</button>
+                  </div>
+                <% } else { %>
+                  <div class="sp-slot-empty-content">
+                    <div class="sp-slot-plus">+</div>
+                    <div>새 시간표</div>
+                  </div>
+                  <a href="/admin/schedule-pages/new" class="sp-slot-link"></a>
+                <% } %>
+              </div>
+              <% } %>
+            </div>
+          </div>
+
+          <!-- Tab: Teacher submissions -->
+          <div class="sp-tab-content" data-tab-content="teacher">
+            <% if (_teacherPages.length === 0) { %>
+              <p class="empty-message">강사가 제출한 시간표가 없습니다.</p>
+            <% } else { %>
+              <div class="sp-teacher-list">
+                <% _teacherPages.forEach(page => { %>
+                  <div class="sp-teacher-card">
+                    <div class="sp-teacher-card-info">
+                      <div class="sp-teacher-card-title"><%= page.title || '(제목 없음)' %></div>
+                      <div class="sp-teacher-card-meta">
+                        <span class="sp-status-badge sp-status-<%= page.status %>">
+                          <%= page.status === 'published' ? '공개' : page.status === 'private' ? '비공개' : page.status === 'pending' ? '심사 중' : '초안' %>
+                        </span>
+                        <span class="sp-teacher-card-owner">by <%= page.owner_name %></span>
+                        <% if (page.slug) { %>
+                          <span class="sp-slug">/p/<%= page.slug %></span>
+                        <% } %>
+                      </div>
+                    </div>
+                    <div class="sp-teacher-card-actions">
+                      <a href="/admin/schedule-pages/<%= page.id %>/edit" class="btn btn-sm <%= page.status === 'pending' ? 'btn-warning' : 'btn-primary' %>">
+                        <%= page.status === 'pending' ? '심사하기' : '편집' %>
+                      </a>
+                      <% if (page.slug && page.status === 'published') { %>
+                        <a href="/p/<%= page.slug %>" target="_blank" class="btn btn-sm btn-outline">보기</a>
+                      <% } %>
+                      <button class="btn btn-sm btn-danger sp-delete-btn" data-id="<%= page.id %>" data-title="<%= page.title %>">삭제</button>
+                    </div>
+                  </div>
+                <% }); %>
+              </div>
+            <% } %>
+          </div>
+
+        <% } else { %>
+          <!-- Teacher: own pages only -->
+          <div class="sp-slot-grid">
+            <% for (let slot = 1; slot <= _maxSlots; slot++) {
+              const page = _myPages.find(p => p.slot_number === slot);
+            %>
+            <div class="sp-slot-card <%= page ? 'sp-slot-filled' : 'sp-slot-empty' %>">
+              <div class="sp-slot-number">Slot <%= slot %></div>
+              <% if (page) { %>
+                <div class="sp-slot-title"><%= page.title || '(제목 없음)' %></div>
+                <div class="sp-slot-meta">
+                  <span class="sp-status-badge sp-status-<%= page.status %>">
+                    <%= page.status === 'published' ? '공개' : page.status === 'private' ? '비공개' : page.status === 'pending' ? '심사 중' : '초안' %>
+                  </span>
+                  <% if (page.slug) { %>
+                    <span class="sp-slug">/p/<%= page.slug %></span>
+                  <% } %>
+                </div>
+                <div class="sp-slot-actions">
+                  <a href="/admin/schedule-pages/<%= page.id %>/edit" class="btn btn-sm btn-primary">편집</a>
+                  <% if (page.slug && page.status === 'published') { %>
+                    <a href="/p/<%= page.slug %>" target="_blank" class="btn btn-sm btn-outline">보기</a>
+                  <% } %>
+                  <button class="btn btn-sm btn-danger sp-delete-btn" data-id="<%= page.id %>" data-title="<%= page.title %>">삭제</button>
+                </div>
+              <% } else { %>
+                <div class="sp-slot-empty-content">
+                  <div class="sp-slot-plus">+</div>
+                  <div>새 시간표</div>
+                </div>
+                <a href="/admin/schedule-pages/new" class="sp-slot-link"></a>
+              <% } %>
+            </div>
+            <% } %>
+          </div>
+        <% } %>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
