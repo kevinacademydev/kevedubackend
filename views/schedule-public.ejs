@@ -86,12 +86,10 @@
 
     <!-- Hero CTA Buttons -->
     <div class="sp-hero-cta-wrap">
-      <% if (hd.classApplicationUrl) { %>
-        <a href="<%= hd.classApplicationUrl %>" target="_blank" rel="noopener noreferrer" class="sp-hero-cta-btn sp-hero-cta-primary">
-          <span data-lang="ko">수업 신청하기</span>
-          <span data-lang="en" style="display:none;">Apply Now</span>
-        </a>
-      <% } %>
+      <a href="<%= hd.classApplicationUrl || '#' %>" <% if (hd.classApplicationUrl) { %>target="_blank" rel="noopener noreferrer"<% } %> class="sp-hero-cta-btn sp-hero-cta-primary" <% if (!hd.classApplicationUrl) { %>onclick="alert('준비 중입니다.'); return false;"<% } %>>
+        <span data-lang="ko">수업 신청하기</span>
+        <span data-lang="en" style="display:none;">Apply Now</span>
+      </a>
       <a href="https://pf.kakao.com/_PuTpxb/chat" target="_blank" rel="noopener noreferrer" class="sp-hero-cta-btn sp-hero-cta-kakao">
         <span data-lang="ko">문의하기</span>
         <span data-lang="en" style="display:none;">Contact Us</span>
@@ -209,14 +207,12 @@
 <% } %>
 
 <!-- Schedule CTA -->
-<% if (hd.classApplicationUrl) { %>
 <section class="sp-schedule-cta">
-  <a href="<%= hd.classApplicationUrl %>" target="_blank" rel="noopener noreferrer" class="sp-schedule-cta-btn">
+  <a href="<%= hd.classApplicationUrl || '#' %>" <% if (hd.classApplicationUrl) { %>target="_blank" rel="noopener noreferrer"<% } %> class="sp-schedule-cta-btn" <% if (!hd.classApplicationUrl) { %>onclick="alert('준비 중입니다.'); return false;"<% } %>>
     <span data-lang="ko">수업 신청하기</span>
     <span data-lang="en" style="display:none;">Apply Now</span>
   </a>
 </section>
-<% } %>
 
 <!-- Syllabus Section -->
 <% if (syl.subjects && syl.subjects.length > 0) { %>
