@@ -1730,7 +1730,7 @@ function initScheduleEditorPage() {
     document.querySelectorAll('.se-days-check input[type="checkbox"]').forEach(cb => {
       cb.addEventListener('change', () => {
         const si = parseInt(cb.dataset.si);
-        collectScheduleCardDays(si);
+        collectAllScheduleStates();
         renderScheduleList();
         markDirty();
       });
@@ -1895,12 +1895,14 @@ function initScheduleEditorPage() {
       });
     }
     popup.style.display = 'none';
+    collectAllScheduleStates();
     renderScheduleList();
     markDirty();
   });
 
   blockDeleteBtn.addEventListener('click', () => {
     if (editingBlockIdx !== null) {
+      collectAllScheduleStates();
       state.schedule_data.schedules[activeScheduleIdx].blocks.splice(editingBlockIdx, 1);
       popup.style.display = 'none';
       renderScheduleList();
