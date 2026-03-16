@@ -16,7 +16,7 @@
         <button class="hamburger-btn" id="hamburgerBtn">&#9776;</button>
         <h2 class="topbar-title">시간표 편집</h2>
         <div style="margin-left:auto;display:flex;gap:0.5rem;">
-          <% if (userRole !== 'admin') { %>
+          <% if (userRole !== 'admin' && userRole !== 'subadmin') { %>
             <button class="btn btn-sm btn-warning" id="seRequestReviewBtn">발행 신청하기</button>
           <% } %>
           <button class="btn btn-sm btn-outline" id="sePreviewBtn">미리보기</button>
@@ -61,7 +61,7 @@
               <label>상태</label>
               <select id="seStatus">
                 <option value="draft">초안 (Draft)</option>
-                <% if (userRole === 'admin') { %>
+                <% if (userRole === 'admin' || userRole === 'subadmin') { %>
                   <option value="private">비공개 (Private)</option>
                   <option value="published">공개 (Published)</option>
                 <% } else { %>
@@ -103,33 +103,24 @@
               <div id="seHeroHighlights"></div>
               <button class="btn btn-sm btn-outline" id="seAddHighlight">+ 하이라이트 추가</button>
             </div>
+
+            <div class="form-group" style="margin-top:1rem;">
+              <label>수업 신청 URL</label>
+              <input type="text" id="seClassAppUrl" placeholder="https://...">
+              <small style="color:var(--gray-500);">입력 시 공개 페이지에 "수업 신청하기" 버튼이 표시됩니다.</small>
+            </div>
           </div>
         </div>
 
-        <!-- 3. Schedule Table -->
+        <!-- 3. Schedule Tables (Multiple) -->
         <div class="se-section">
           <button class="se-section-toggle" data-target="seSchedule">
             <span>시간표 (Schedule)</span>
             <span class="se-arrow">&#9660;</span>
           </button>
           <div class="se-section-body" id="seSchedule">
-            <div class="se-list-section">
-              <label>요일 선택</label>
-              <div id="seDaysCheck" class="se-days-check">
-                <label><input type="checkbox" value="월" checked> 월</label>
-                <label><input type="checkbox" value="화" checked> 화</label>
-                <label><input type="checkbox" value="수" checked> 수</label>
-                <label><input type="checkbox" value="목" checked> 목</label>
-                <label><input type="checkbox" value="금" checked> 금</label>
-                <label><input type="checkbox" value="토"> 토</label>
-                <label><input type="checkbox" value="일"> 일</label>
-              </div>
-            </div>
-
-            <div class="se-list-section">
-              <label>수업 블록 (각 요일에 자유롭게 시간 추가)</label>
-              <div id="seBlockGrid" class="se-block-grid"></div>
-            </div>
+            <div id="seScheduleList"></div>
+            <button class="btn btn-sm btn-outline" id="seAddSchedule" style="margin-top:0.5rem;">+ 시간표 추가하기</button>
           </div>
         </div>
 
@@ -166,6 +157,23 @@
                 <input type="color" id="seThemeAccent" value="#ffffff" style="height:40px;">
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- 6. 강사 프로필 -->
+        <div class="se-section">
+          <button class="se-section-toggle" data-target="seProfile">
+            <span>강사 프로필</span>
+            <span class="se-arrow">&#9660;</span>
+          </button>
+          <div class="se-section-body" id="seProfile">
+            <div id="seProfileImagePreview" class="se-profile-preview"></div>
+            <input type="file" id="seProfileImageInput" accept="image/*" style="display:none;">
+            <div style="display:flex;gap:0.5rem;">
+              <button class="btn btn-sm btn-outline" id="seUploadProfileImage">이미지 업로드</button>
+              <button class="btn btn-sm btn-danger" id="seDeleteProfileImage" style="display:none;">삭제</button>
+            </div>
+            <small style="color:var(--gray-500);">공개 시간표 페이지 하단에 표시됩니다.</small>
           </div>
         </div>
 

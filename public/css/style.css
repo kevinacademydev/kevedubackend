@@ -1797,7 +1797,7 @@ body {
 }
 
 .se-section-body.open {
-  max-height: 3000px;
+  max-height: 9999px;
   padding: 0 1.25rem 1.25rem;
   display: flex;
   flex-direction: column;
@@ -1955,6 +1955,106 @@ body {
 .se-block-add:hover {
   color: var(--primary);
   background: rgba(19, 51, 39, 0.03);
+}
+
+/* Multi-schedule cards */
+.se-schedule-card {
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: var(--gray-50);
+}
+
+.se-schedule-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.se-sched-title {
+  flex: 1;
+  font-weight: 600;
+  font-size: 1rem;
+  min-width: 0;
+}
+
+.se-sched-title input {
+  width: 100%;
+  padding: 0.35rem 0.6rem;
+  border: 1.5px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.se-sched-title input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.se-sched-date-range {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.se-sched-date-range input[type="date"] {
+  padding: 0.3rem 0.5rem;
+  border: 1.5px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+  font-family: inherit;
+}
+
+.se-sched-date-range input[type="date"]:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.se-sched-remove {
+  background: none;
+  border: none;
+  color: var(--gray-400);
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.se-sched-remove:hover {
+  color: var(--danger);
+}
+
+.se-schedule-card .se-days-check {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.se-schedule-card .se-days-check label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* Profile image preview */
+.se-profile-preview {
+  margin-bottom: 0.75rem;
+}
+
+.se-profile-preview img {
+  max-width: 300px;
+  max-height: 420px;
+  border-radius: var(--radius);
+  border: 1px solid var(--gray-200);
 }
 
 /* Cell popup */

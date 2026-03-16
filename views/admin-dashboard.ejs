@@ -62,7 +62,7 @@
             <div class="card">
               <div class="card-header">
                 <h3>수업 목록</h3>
-                <% if (userRole === 'admin') { %>
+                <% if (userRole === 'admin' || userRole === 'subadmin') { %>
                   <button class="btn btn-sm btn-primary" id="btnCreateClass">+ 수업 생성</button>
                 <% } %>
               </div>
@@ -89,13 +89,15 @@
               </div>
             </div>
 
-            <% if (userRole === 'admin') { %>
+            <% if (userRole === 'admin' || userRole === 'subadmin') { %>
             <div class="card" style="margin-top: 1.5rem;">
               <div class="card-header">
                 <h3>강사 관리</h3>
                 <div style="display:flex;gap:0.5rem;align-items:center;">
                   <a href="/admin/teachers" class="btn btn-sm btn-outline">더보기</a>
-                  <button class="btn btn-sm btn-primary" id="btnCreateTeacher">+ 강사 생성</button>
+                  <% if (userRole === 'admin') { %>
+                    <button class="btn btn-sm btn-primary" id="btnCreateTeacher">+ 강사 생성</button>
+                  <% } %>
                 </div>
               </div>
               <div class="card-body">
@@ -104,7 +106,7 @@
                 <% } else { %>
                   <table class="table">
                     <thead>
-                      <tr><th>아이디</th><th>이름</th><th>담당 수업</th><th></th></tr>
+                      <tr><th>아이디</th><th>이름</th><th>담당 수업</th><% if (userRole === 'admin') { %><th></th><% } %></tr>
                     </thead>
                     <tbody>
                       <% teachers.forEach(t => { %>
@@ -112,9 +114,11 @@
                           <td><%= t.username %></td>
                           <td><%= t.name %></td>
                           <td><%= t.class_count %>개</td>
+                          <% if (userRole === 'admin') { %>
                           <td>
                             <button class="btn btn-sm btn-danger btn-delete-teacher" data-id="<%= t.id %>">삭제</button>
                           </td>
+                          <% } %>
                         </tr>
                       <% }) %>
                     </tbody>
@@ -130,10 +134,10 @@
                 <a href="/admin/stats" class="btn btn-sm btn-outline">더보기</a>
               </div>
               <div class="card-body">
-                <p><%= userRole === 'admin' ? '전체' : '담당' %> 수업: <strong><%= classes.length %></strong>개</p>
+                <p><%= userRole === 'admin' || userRole === 'subadmin' ? '전체' : '담당' %> 수업: <strong><%= classes.length %></strong>개</p>
                 <p>학생 수: <strong><%= uniqueStudentCount %></strong>명</p>
                 <p>구좌 수: <strong><%= enrollmentCount %></strong>건</p>
-                <% if (userRole === 'admin') { %>
+                <% if (userRole === 'admin' || userRole === 'subadmin') { %>
                   <p>전체 강사: <strong><%= teachers.length %></strong>명</p>
                 <% } %>
               </div>
@@ -192,6 +196,19 @@
               </div>
             </div>
           </div>
+
+          <!-- 파일 관리 (전체 너비) -->
+          <div style="grid-column: 1 / -1;">
+            <div class="card">
+              <div class="card-header">
+                <h3>&#128193; 파일 관리</h3>
+                <a href="/admin/files" class="btn btn-sm btn-primary">파일 탐색기 열기</a>
+              </div>
+              <div class="card-body" id="dashFileSection">
+                <p class="empty-message">최근 파일을 불러오는 중...</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </main>
@@ -233,6 +250,7 @@
         <button class="modal-close" onclick="document.getElementById('createTeacherModal').style.display='none'">&times;</button>
       </div>
       <div class="modal-body">
+        <input type="hidden" id="newTeacherRole" value="teacher">
         <div class="form-group" style="margin-bottom:1rem;">
           <label>아이디</label>
           <input type="text" id="newTeacherId" placeholder="예: teacher4">
@@ -254,5 +272,70 @@
   </div>
 
   <script src="/js/app.js"></script>
+  <script>
+    // 대시보드 파일 관리 미니 위젯
+    (function() {
+      const section = document.getElementById('dashFileSection');
+      if (!section) return;
+
+      async function loadRecentFiles() {
+        try {
+          const res = await fetch('/admin/files/list?prefix=uploads/');
+          if (!res.ok) throw new Error('Failed');
+          const data = await res.json();
+
+          const files = data.files || [];
+          if (files.length === 0 && (!data.prefixes || data.prefixes.length === 0)) {
+            section.innerHTML = '<p class="empty-message">업로드된 파일이 없습니다. <a href="/admin/files">파일 탐색기</a>에서 업로드하세요.</p>';
+            return;
+          }
+
+          // 최근 5개 파일만 표시
+          const recent = files.sort((a, b) => new Date(b.updated) - new Date(a.updated)).slice(0, 5);
+          const folderCount = (data.prefixes || []).length;
+
+          let html = '<div class="file-list">';
+          recent.forEach(f => {
+            const icon = f.contentType && f.contentType.startsWith('image/') ? '&#128444;' : '&#128196;';
+            const size = formatSize(f.size);
+            const date = f.updated ? new Date(f.updated).toLocaleDateString('ko-KR') : '';
+            html += '<div class="file-item">';
+            html += '  <div class="file-info">';
+            html += '    <span class="file-name">' + icon + ' ' + escapeHtml(f.name) + '</span>';
+            html += '    <span class="file-date">' + size + ' | ' + date + '</span>';
+            html += '  </div>';
+            html += '</div>';
+          });
+          html += '</div>';
+
+          if (files.length > 5 || folderCount > 0) {
+            html += '<p style="margin-top:0.75rem;font-size:0.85rem;color:#64748b;">';
+            html += '총 ' + files.length + '개 파일';
+            if (folderCount > 0) html += ', ' + folderCount + '개 폴더';
+            html += ' — <a href="/admin/files">전체 보기</a></p>';
+          }
+
+          section.innerHTML = html;
+        } catch (err) {
+          section.innerHTML = '<p class="empty-message">파일 목록을 불러올 수 없습니다. <a href="/admin/files">파일 탐색기</a></p>';
+        }
+      }
+
+      function formatSize(bytes) {
+        if (!bytes) return '0 B';
+        var units = ['B', 'KB', 'MB', 'GB'], i = 0, s = bytes;
+        while (s >= 1024 && i < units.length - 1) { s /= 1024; i++; }
+        return s.toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
+      }
+
+      function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      loadRecentFiles();
+    })();
+  </script>
 </body>
 </html>

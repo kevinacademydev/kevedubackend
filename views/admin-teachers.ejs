@@ -21,7 +21,9 @@
         <div class="card">
           <div class="card-header">
             <h3>강사 목록</h3>
-            <button class="btn btn-sm btn-primary" id="btnCreateTeacher">+ 강사 생성</button>
+            <% if (userRole === 'admin') { %>
+              <button class="btn btn-sm btn-primary" id="btnCreateTeacher">+ 강사 생성</button>
+            <% } %>
           </div>
           <div class="card-body">
             <% if (teachers.length === 0) { %>
@@ -36,7 +38,7 @@
                       <th>담당 수업</th>
                       <th>수업 수</th>
                       <th>생성일</th>
-                      <th></th>
+                      <% if (userRole === 'admin') { %><th></th><% } %>
                     </tr>
                   </thead>
                   <tbody>
@@ -46,9 +48,49 @@
                         <td><%= t.name %></td>
                         <td><%= t.class_names || '-' %></td>
                         <td><%= t.class_count %>개</td>
-                        <td><%= t.created_at ? t.created_at.substring(0, 10) : '-' %></td>
+                        <td><%= t.created_at ? new Date(t.created_at).toISOString().substring(0, 10) : '-' %></td>
+                        <% if (userRole === 'admin') { %>
                         <td>
                           <button class="btn btn-sm btn-danger btn-delete-teacher" data-id="<%= t.id %>">삭제</button>
+                        </td>
+                        <% } %>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              </div>
+            <% } %>
+          </div>
+        </div>
+
+        <% if (userRole === 'admin') { %>
+        <div class="card" style="margin-top:1.5rem;">
+          <div class="card-header">
+            <h3>부원장 목록</h3>
+            <button class="btn btn-sm btn-primary" id="btnCreateSubadmin">+ 부원장 생성</button>
+          </div>
+          <div class="card-body">
+            <% if (subadmins.length === 0) { %>
+              <p class="empty-message">등록된 부원장이 없습니다.</p>
+            <% } else { %>
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>아이디</th>
+                      <th>이름</th>
+                      <th>생성일</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% subadmins.forEach(sa => { %>
+                      <tr>
+                        <td><%= sa.username %></td>
+                        <td><%= sa.name %></td>
+                        <td><%= sa.created_at ? new Date(sa.created_at).toISOString().substring(0, 10) : '-' %></td>
+                        <td>
+                          <button class="btn btn-sm btn-danger btn-delete-teacher" data-id="<%= sa.id %>">삭제</button>
                         </td>
                       </tr>
                     <% }) %>
@@ -58,18 +100,21 @@
             <% } %>
           </div>
         </div>
+        <% } %>
       </div>
     </main>
   </div>
 
-  <!-- 강사 생성 모달 -->
+  <!-- 강사/부원장 생성 모달 -->
+  <% if (userRole === 'admin') { %>
   <div id="createTeacherModal" class="modal-overlay" style="display:none;">
     <div class="modal">
       <div class="modal-header">
-        <h3>강사 계정 생성</h3>
+        <h3 id="createTeacherModalTitle">강사 계정 생성</h3>
         <button class="modal-close" onclick="document.getElementById('createTeacherModal').style.display='none'">&times;</button>
       </div>
       <div class="modal-body">
+        <input type="hidden" id="newTeacherRole" value="teacher">
         <div class="form-group" style="margin-bottom:1rem;">
           <label>아이디</label>
           <input type="text" id="newTeacherId" placeholder="예: teacher4">
@@ -89,6 +134,7 @@
       </div>
     </div>
   </div>
+  <% } %>
 
   <script src="/js/app.js"></script>
 </body>

@@ -107,6 +107,83 @@ body {
   font-size: 0.85rem;
 }
 
+/* Hero CTA Buttons */
+.sp-hero-cta-wrap {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
+.sp-hero-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.7rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+  letter-spacing: 0.01em;
+}
+
+.sp-hero-cta-primary {
+  background: #fff;
+  color: #133327;
+}
+
+.sp-hero-cta-primary:hover {
+  background: #e9ecef;
+  transform: translateY(-1px);
+}
+
+.sp-hero-cta-kakao {
+  background: #FEE500;
+  color: #191919;
+}
+
+.sp-hero-cta-kakao:hover {
+  background: #f0d800;
+  transform: translateY(-1px);
+}
+
+.sp-hero-cta-blog {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+
+.sp-hero-cta-blog:hover {
+  background: rgba(255,255,255,0.25);
+  transform: translateY(-1px);
+}
+
+/* Schedule CTA */
+.sp-schedule-cta {
+  text-align: center;
+  padding: 2rem 1.5rem 3rem;
+}
+
+.sp-schedule-cta-btn {
+  display: inline-block;
+  padding: 1rem 3rem;
+  background: #133327;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: all 0.2s;
+  box-shadow: 0 4px 16px rgba(19,51,39,0.3);
+}
+
+.sp-schedule-cta-btn:hover {
+  background: #0d2319;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(19,51,39,0.4);
+}
+
 /* Sections */
 .sp-section {
   padding: 3rem 0;
@@ -121,6 +198,19 @@ body {
   font-weight: 700;
   text-align: center;
   margin-bottom: 2rem;
+}
+
+/* Multi-schedule subtitle */
+.sp-timetable-subtitle {
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.sp-timetable-daterange {
+  text-align: center;
 }
 
 /* Visual Timetable */
@@ -522,6 +612,22 @@ body {
 
   .sp-weekly-grid {
     grid-template-columns: 1fr;
+  }
+
+  .sp-hero-cta-wrap {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .sp-hero-cta-btn {
+    width: 100%;
+    max-width: 280px;
+    justify-content: center;
+  }
+
+  .sp-schedule-cta-btn {
+    padding: 0.85rem 2rem;
+    font-size: 1rem;
   }
 }
 

@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>파일 관리 - 케빈아카데미</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .file-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.9rem;
+      flex: 1;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+    .breadcrumb a {
+      color: #2563eb;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .breadcrumb .sep { color: #94a3b8; margin: 0 0.15rem; }
+    .breadcrumb .current { color: #374151; font-weight: 600; }
+
+    .file-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+    .file-actions .btn {
+      font-size: 0.85rem;
+      padding: 0.4rem 0.85rem;
+    }
+
+    .file-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .file-table th {
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      font-size: 0.8rem;
+      color: #64748b;
+      border-bottom: 2px solid #e2e8f0;
+      font-weight: 600;
+    }
+    .file-table td {
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.88rem;
+      vertical-align: middle;
+    }
+    .file-table tr:hover { background: #f8fafc; }
+    .file-table tr.folder-row { cursor: pointer; }
+    .file-table tr.folder-row:hover { background: #eff6ff; }
+
+    .file-icon {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+    }
+    .file-icon .icon {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+    .file-name-text {
+      word-break: break-all;
+    }
+
+    .file-size { color: #64748b; white-space: nowrap; }
+    .file-date { color: #64748b; white-space: nowrap; font-size: 0.82rem; }
+
+    .file-row-actions {
+      display: flex;
+      gap: 0.35rem;
+      justify-content: flex-end;
+    }
+    .file-row-actions .btn-sm {
+      font-size: 0.78rem;
+      padding: 0.25rem 0.55rem;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      cursor: pointer;
+      color: #374151;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .file-row-actions .btn-sm:hover { background: #f1f5f9; }
+    .file-row-actions .btn-delete { color: #dc2626; border-color: #fecaca; }
+    .file-row-actions .btn-delete:hover { background: #fef2f2; }
+
+    .dropzone {
+      border: 2px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      color: #94a3b8;
+      margin-bottom: 1rem;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    .dropzone.active {
+      border-color: #2563eb;
+      background: #eff6ff;
+      color: #2563eb;
+    }
+    .dropzone p { margin: 0.5rem 0 0; font-size: 0.85rem; }
+
+    .upload-progress {
+      display: none;
+      margin-bottom: 1rem;
+    }
+    .upload-progress .progress-bar {
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .upload-progress .progress-fill {
+      height: 100%;
+      background: #2563eb;
+      width: 0%;
+      transition: width 0.3s;
+    }
+    .upload-progress .progress-text {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 0.35rem;
+    }
+
+    .empty-folder {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #94a3b8;
+    }
+    .empty-folder .empty-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+
+    /* Preview Modal */
+    .preview-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .preview-overlay.show {
+      display: flex;
+    }
+    .preview-modal {
+      background: #fff;
+      border-radius: 12px;
+      max-width: 90vw;
+      max-height: 90vh;
+      overflow: auto;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .preview-close {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.75rem;
+      font-size: 1.5rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #64748b;
+      z-index: 10;
+      width: 2rem;
+      height: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.9);
+    }
+    .preview-close:hover { color: #111; }
+    .preview-modal img {
+      max-width: 85vw;
+      max-height: 85vh;
+      display: block;
+    }
+    .preview-modal iframe {
+      width: 80vw;
+      height: 85vh;
+      border: none;
+    }
+
+    /* New folder dialog */
+    .dialog-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 999;
+      justify-content: center;
+      align-items: center;
+    }
+    .dialog-overlay.show { display: flex; }
+    .dialog-box {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.5rem;
+      min-width: 320px;
+      max-width: 90vw;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .dialog-box h3 { margin: 0 0 1rem; font-size: 1.1rem; }
+    .dialog-box input {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+      box-sizing: border-box;
+    }
+    .dialog-box .dialog-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+
+    .loading-spinner {
+      text-align: center;
+      padding: 2rem;
+      color: #94a3b8;
+    }
+
+    @media (max-width: 640px) {
+      .file-toolbar { flex-direction: column; align-items: stretch; }
+      .file-actions { justify-content: flex-end; }
+      .file-table .col-size,
+      .file-table .col-date { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="student-layout">
+    <%- include('partials/admin-sidebar', { activePage: 'files' }) %>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <main class="student-main">
+      <div class="student-topbar">
+        <button class="hamburger-btn" id="hamburgerBtn">&#9776;</button>
+        <h2 class="topbar-title">파일 관리</h2>
+      </div>
+
+      <div class="student-content">
+        <!-- Toolbar: breadcrumb + actions -->
+        <div class="file-toolbar">
+          <div class="breadcrumb" id="breadcrumb">
+            <a href="#" data-prefix="">&#128193; 버킷 루트</a>
+          </div>
+          <div class="file-actions">
+            <button class="btn btn-secondary" id="btnNewFolder">+ 폴더</button>
+            <label class="btn btn-primary" id="btnUpload" style="cursor:pointer;margin:0;">
+              업로드
+              <input type="file" id="fileInput" multiple hidden>
+            </label>
+          </div>
+        </div>
+
+        <!-- Drop zone -->
+        <div class="dropzone" id="dropzone">
+          &#128228; 파일을 여기에 드래그하거나 위 '업로드' 버튼을 클릭하세요
+          <p>최대 50MB, 여러 파일 동시 업로드 가능</p>
+        </div>
+
+        <!-- Upload progress -->
+        <div class="upload-progress" id="uploadProgress">
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+          <div class="progress-text" id="progressText">업로드 중...</div>
+        </div>
+
+        <!-- File table -->
+        <div class="card">
+          <div class="card-body" style="padding:0;">
+            <div id="fileListContainer">
+              <div class="loading-spinner">불러오는 중...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Preview modal -->
+  <div class="preview-overlay" id="previewOverlay">
+    <div class="preview-modal" id="previewModal">
+      <button class="preview-close" id="previewClose">&times;</button>
+      <div id="previewContent"></div>
+    </div>
+  </div>
+
+  <!-- New folder dialog -->
+  <div class="dialog-overlay" id="folderDialog">
+    <div class="dialog-box">
+      <h3>새 폴더 만들기</h3>
+      <input type="text" id="folderNameInput" placeholder="폴더 이름">
+      <div class="dialog-actions">
+        <button class="btn btn-secondary" id="folderCancel">취소</button>
+        <button class="btn btn-primary" id="folderConfirm">만들기</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    (function() {
+      const userRole = '<%= user.role %>';
+      let currentPrefix = '';
+
+      const breadcrumbEl = document.getElementById('breadcrumb');
+      const fileListContainer = document.getElementById('fileListContainer');
+      const dropzone = document.getElementById('dropzone');
+      const fileInput = document.getElementById('fileInput');
+      const uploadProgress = document.getElementById('uploadProgress');
+      const progressFill = document.getElementById('progressFill');
+      const progressText = document.getElementById('progressText');
+      const previewOverlay = document.getElementById('previewOverlay');
+      const previewContent = document.getElementById('previewContent');
+      const folderDialog = document.getElementById('folderDialog');
+      const folderNameInput = document.getElementById('folderNameInput');
+
+      // ---- Breadcrumb ----
+      function updateBreadcrumb(prefix) {
+        const parts = prefix.split('/').filter(Boolean);
+        let html = '<a href="#" data-prefix="">&#128193; 버킷 루트</a>';
+        let accumulated = '';
+        parts.forEach((part, i) => {
+          accumulated += part + '/';
+          html += '<span class="sep">/</span>';
+          if (i === parts.length - 1) {
+            html += '<span class="current">' + escapeHtml(part) + '</span>';
+          } else {
+            html += '<a href="#" data-prefix="' + escapeHtml(accumulated) + '">' + escapeHtml(part) + '</a>';
+          }
+        });
+        breadcrumbEl.innerHTML = html;
+        breadcrumbEl.querySelectorAll('a').forEach(a => {
+          a.addEventListener('click', e => {
+            e.preventDefault();
+            navigateTo(a.dataset.prefix || '');
+          });
+        });
+      }
+
+      // ---- Navigate ----
+      function navigateTo(prefix) {
+        currentPrefix = prefix;
+        updateBreadcrumb(prefix);
+        loadFiles(prefix);
+      }
+
+      // ---- Load files ----
+      async function loadFiles(prefix) {
+        fileListContainer.innerHTML = '<div class="loading-spinner">불러오는 중...</div>';
+        try {
+          const res = await fetch('/admin/files/list?prefix=' + encodeURIComponent(prefix));
+          if (!res.ok) throw new Error('Failed');
+          const data = await res.json();
+          renderFileList(data.prefixes, data.files);
+        } catch (err) {
+          fileListContainer.innerHTML = '<div class="empty-folder"><div class="empty-icon">&#9888;</div><p>파일 목록을 불러올 수 없습니다.</p></div>';
+        }
+      }
+
+      // ---- Render ----
+      function renderFileList(folders, files) {
+        if (folders.length === 0 && files.length === 0) {
+          fileListContainer.innerHTML = '<div class="empty-folder"><div class="empty-icon">&#128193;</div><p>빈 폴더입니다</p></div>';
+          return;
+        }
+
+        let html = '<table class="file-table"><thead><tr>';
+        html += '<th>이름</th><th class="col-size">크기</th><th class="col-date">수정일</th><th style="width:120px;">작업</th>';
+        html += '</tr></thead><tbody>';
+
+        // Folders
+        folders.forEach(f => {
+          html += '<tr class="folder-row" data-prefix="' + escapeHtml(f.fullPath) + '">';
+          html += '<td><span class="file-icon"><span class="icon">&#128193;</span><span class="file-name-text">' + escapeHtml(f.name) + '</span></span></td>';
+          html += '<td class="col-size file-size">-</td>';
+          html += '<td class="col-date file-date">-</td>';
+          html += '<td><div class="file-row-actions">';
+          if (userRole === 'admin') {
+            html += '<button class="btn-sm btn-delete" data-delete="' + escapeHtml(f.fullPath) + '" title="삭제">&#128465;</button>';
+          }
+          html += '</div></td>';
+          html += '</tr>';
+        });
+
+        // Files
+        files.forEach(f => {
+          const ext = f.name.split('.').pop().toLowerCase();
+          const icon = getFileIcon(f.contentType, ext);
+          const canPreview = isPreviewable(f.contentType, ext);
+          html += '<tr>';
+          html += '<td><span class="file-icon"><span class="icon">' + icon + '</span><span class="file-name-text">' + escapeHtml(f.name) + '</span></span></td>';
+          html += '<td class="col-size file-size">' + formatSize(f.size) + '</td>';
+          html += '<td class="col-date file-date">' + formatDate(f.updated) + '</td>';
+          html += '<td><div class="file-row-actions">';
+          if (canPreview) {
+            html += '<button class="btn-sm" data-preview="' + escapeHtml(f.fullPath) + '" data-type="' + escapeHtml(f.contentType) + '" title="미리보기">&#128065;</button>';
+          }
+          html += '<a class="btn-sm" href="/admin/files/download?path=' + encodeURIComponent(f.fullPath) + '" title="다운로드">&#11015;</a>';
+          if (userRole === 'admin') {
+            html += '<button class="btn-sm btn-delete" data-delete="' + escapeHtml(f.fullPath) + '" title="삭제">&#128465;</button>';
+          }
+          html += '</div></td>';
+          html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+        fileListContainer.innerHTML = html;
+
+        // Folder click
+        fileListContainer.querySelectorAll('.folder-row').forEach(row => {
+          row.addEventListener('click', e => {
+            if (e.target.closest('.btn-sm')) return;
+            navigateTo(row.dataset.prefix);
+          });
+        });
+
+        // Delete click
+        fileListContainer.querySelectorAll('[data-delete]').forEach(btn => {
+          btn.addEventListener('click', async e => {
+            e.stopPropagation();
+            const path = btn.dataset.delete;
+            if (!confirm('정말 삭제하시겠습니까?\n' + path)) return;
+            try {
+              const res = await fetch('/admin/files/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path })
+              });
+              if (!res.ok) throw new Error('Failed');
+              loadFiles(currentPrefix);
+            } catch (err) {
+              alert('삭제 실패');
+            }
+          });
+        });
+
+        // Preview click
+        fileListContainer.querySelectorAll('[data-preview]').forEach(btn => {
+          btn.addEventListener('click', e => {
+            e.stopPropagation();
+            openPreview(btn.dataset.preview, btn.dataset.type);
+          });
+        });
+      }
+
+      // ---- File icon ----
+      function getFileIcon(contentType, ext) {
+        if (contentType && contentType.startsWith('image/')) return '&#128444;';
+        if (ext === 'pdf') return '&#128196;';
+        if (['doc','docx','hwp','hwpx'].includes(ext)) return '&#128209;';
+        if (['xls','xlsx','csv'].includes(ext)) return '&#128202;';
+        if (['zip','tar','gz','rar'].includes(ext)) return '&#128230;';
+        return '&#128196;';
+      }
+
+      function isPreviewable(contentType, ext) {
+        if (contentType && contentType.startsWith('image/')) return true;
+        if (ext === 'pdf') return true;
+        return false;
+      }
+
+      // ---- Preview ----
+      function openPreview(filePath, contentType) {
+        const url = '/admin/files/download?path=' + encodeURIComponent(filePath);
+        if (contentType && contentType.startsWith('image/')) {
+          previewContent.innerHTML = '<img src="' + url + '" alt="미리보기">';
+        } else {
+          previewContent.innerHTML = '<iframe src="' + url + '"></iframe>';
+        }
+        previewOverlay.classList.add('show');
+      }
+
+      document.getElementById('previewClose').addEventListener('click', () => {
+        previewOverlay.classList.remove('show');
+        previewContent.innerHTML = '';
+      });
+      previewOverlay.addEventListener('click', e => {
+        if (e.target === previewOverlay) {
+          previewOverlay.classList.remove('show');
+          previewContent.innerHTML = '';
+        }
+      });
+
+      // ---- Upload ----
+      async function uploadFiles(files) {
+        if (!files.length) return;
+        const formData = new FormData();
+        formData.append('prefix', currentPrefix);
+        for (const file of files) {
+          formData.append('files', file);
+        }
+
+        uploadProgress.style.display = 'block';
+        progressFill.style.width = '0%';
+        progressText.textContent = '업로드 중... (0/' + files.length + ')';
+
+        try {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/admin/files/upload');
+          xhr.upload.addEventListener('progress', e => {
+            if (e.lengthComputable) {
+              const pct = Math.round((e.loaded / e.total) * 100);
+              progressFill.style.width = pct + '%';
+              progressText.textContent = '업로드 중... ' + pct + '%';
+            }
+          });
+          await new Promise((resolve, reject) => {
+            xhr.onload = () => {
+              if (xhr.status === 200) resolve();
+              else reject(new Error(xhr.responseText));
+            };
+            xhr.onerror = () => reject(new Error('Upload failed'));
+            xhr.send(formData);
+          });
+          progressText.textContent = '업로드 완료!';
+          setTimeout(() => { uploadProgress.style.display = 'none'; }, 1500);
+          loadFiles(currentPrefix);
+        } catch (err) {
+          progressText.textContent = '업로드 실패: ' + err.message;
+          setTimeout(() => { uploadProgress.style.display = 'none'; }, 3000);
+        }
+      }
+
+      fileInput.addEventListener('change', () => {
+        uploadFiles(Array.from(fileInput.files));
+        fileInput.value = '';
+      });
+
+      // Drag and drop
+      ['dragenter','dragover'].forEach(evt => {
+        dropzone.addEventListener(evt, e => {
+          e.preventDefault();
+          dropzone.classList.add('active');
+        });
+      });
+      ['dragleave','drop'].forEach(evt => {
+        dropzone.addEventListener(evt, e => {
+          e.preventDefault();
+          dropzone.classList.remove('active');
+        });
+      });
+      dropzone.addEventListener('drop', e => {
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length) uploadFiles(files);
+      });
+      dropzone.addEventListener('click', () => fileInput.click());
+
+      // ---- New folder ----
+      document.getElementById('btnNewFolder').addEventListener('click', () => {
+        folderNameInput.value = '';
+        folderDialog.classList.add('show');
+        setTimeout(() => folderNameInput.focus(), 100);
+      });
+      document.getElementById('folderCancel').addEventListener('click', () => {
+        folderDialog.classList.remove('show');
+      });
+      folderDialog.addEventListener('click', e => {
+        if (e.target === folderDialog) folderDialog.classList.remove('show');
+      });
+      document.getElementById('folderConfirm').addEventListener('click', async () => {
+        const name = folderNameInput.value.trim();
+        if (!name) return alert('폴더 이름을 입력하세요.');
+        if (/[\/\\]/.test(name)) return alert('폴더 이름에 / 또는 \\를 사용할 수 없습니다.');
+        try {
+          const res = await fetch('/admin/files/new-folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prefix: currentPrefix, folderName: name })
+          });
+          if (!res.ok) throw new Error('Failed');
+          folderDialog.classList.remove('show');
+          loadFiles(currentPrefix);
+        } catch (err) {
+          alert('폴더 생성 실패');
+        }
+      });
+      folderNameInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('folderConfirm').click();
+        if (e.key === 'Escape') folderDialog.classList.remove('show');
+      });
+
+      // ---- Helpers ----
+      function formatSize(bytes) {
+        if (!bytes || bytes === 0) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let i = 0;
+        let size = bytes;
+        while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
+        return size.toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
+      }
+
+      function formatDate(dateStr) {
+        if (!dateStr) return '-';
+        const d = new Date(dateStr);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const h = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        return y + '-' + m + '-' + day + ' ' + h + ':' + min;
+      }
+
+      function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      // ---- Init ----
+      navigateTo('');
+    })();
+  </script>
+</body>
+</html>

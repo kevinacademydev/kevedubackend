@@ -65,7 +65,7 @@
       </a>
     </div>
 
-    <% if (user.role === 'admin') { %>
+    <% if (user.role === 'admin' || user.role === 'subadmin') { %>
     <div class="sidebar-section">
       <a href="/admin/teachers" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'teachers' ? 'active' : '' %>">
         <span class="sidebar-icon">&#128100;</span>
@@ -101,6 +101,13 @@
         <span>시간표 만들기</span>
       </a>
     </div>
+
+    <div class="sidebar-section">
+      <a href="/admin/files" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'files' ? 'active' : '' %>">
+        <span class="sidebar-icon">&#128193;</span>
+        <span>파일 관리</span>
+      </a>
+    </div>
   </nav>
 
   <div class="sidebar-divider"></div>
@@ -129,8 +136,9 @@
       <div class="sidebar-user-avatar"><%= user.name.charAt(0) %></div>
       <div class="sidebar-user-info">
         <div class="sidebar-user-name"><%= user.name %></div>
-        <div class="sidebar-user-role"><%= user.role === 'admin' ? '원장' : '강사' %></div>
+        <div class="sidebar-user-role"><%= user.role === 'admin' ? '원장' : user.role === 'subadmin' ? '부원장' : '강사' %></div>
       </div>
+      <a href="/admin/profile" title="프로필 편집" style="margin-left:auto;color:var(--gray-400);font-size:1.1rem;padding:0.25rem;text-decoration:none;display:flex;align-items:center;">&#9998;</a>
     </div>
     <a href="/auth/logout" class="sidebar-logout" title="로그아웃">&#9109; 로그아웃</a>
   </div>

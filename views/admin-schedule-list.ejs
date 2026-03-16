@@ -23,7 +23,7 @@
         <% const _myPages = typeof myPages !== 'undefined' ? myPages : (typeof pages !== 'undefined' ? pages : []); %>
         <% const _teacherPages = typeof teacherPages !== 'undefined' ? teacherPages : []; %>
 
-        <% if (userRole === 'admin') { %>
+        <% if (userRole === 'admin' || userRole === 'subadmin') { %>
           <!-- Admin tab navigation -->
           <div class="sp-tab-nav">
             <button class="sp-tab-btn active" data-tab="my">내 시간표</button>

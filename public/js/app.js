@@ -120,10 +120,12 @@ function initAdminDashboard() {
     });
   }
 
-  // Create teacher
+  // Create teacher (dashboard)
   const btnCreateTeacher = document.getElementById('btnCreateTeacher');
   if (btnCreateTeacher) {
     btnCreateTeacher.addEventListener('click', () => {
+      const roleInput = document.getElementById('newTeacherRole');
+      if (roleInput) roleInput.value = 'teacher';
       document.getElementById('createTeacherModal').style.display = 'flex';
     });
   }
@@ -134,12 +136,14 @@ function initAdminDashboard() {
       const username = document.getElementById('newTeacherId').value.trim();
       const name = document.getElementById('newTeacherName').value.trim();
       const password = document.getElementById('newTeacherPw').value;
+      const roleInput = document.getElementById('newTeacherRole');
+      const role = roleInput ? roleInput.value : 'teacher';
       if (!username || !name || !password) return alert('모든 항목을 입력해주세요.');
 
       const res = await fetch('/admin/teachers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, name, password })
+        body: JSON.stringify({ username, name, password, role })
       });
       const data = await res.json();
       if (data.success) {
@@ -153,7 +157,7 @@ function initAdminDashboard() {
   // Delete teacher
   document.querySelectorAll('.btn-delete-teacher').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!confirm('정말 이 강사를 삭제하시겠습니까?')) return;
+      if (!confirm('정말 삭제하시겠습니까?')) return;
       const res = await fetch(`/admin/teachers/${btn.dataset.id}/delete`, { method: 'POST' });
       const data = await res.json();
       if (data.success) location.reload();
@@ -175,6 +179,22 @@ function initAdminTeachersPage() {
   const btnCreateTeacher = document.getElementById('btnCreateTeacher');
   if (btnCreateTeacher) {
     btnCreateTeacher.addEventListener('click', () => {
+      const roleInput = document.getElementById('newTeacherRole');
+      const titleEl = document.getElementById('createTeacherModalTitle');
+      if (roleInput) roleInput.value = 'teacher';
+      if (titleEl) titleEl.textContent = '강사 계정 생성';
+      document.getElementById('createTeacherModal').style.display = 'flex';
+    });
+  }
+
+  // Create subadmin
+  const btnCreateSubadmin = document.getElementById('btnCreateSubadmin');
+  if (btnCreateSubadmin) {
+    btnCreateSubadmin.addEventListener('click', () => {
+      const roleInput = document.getElementById('newTeacherRole');
+      const titleEl = document.getElementById('createTeacherModalTitle');
+      if (roleInput) roleInput.value = 'subadmin';
+      if (titleEl) titleEl.textContent = '부원장 계정 생성';
       document.getElementById('createTeacherModal').style.display = 'flex';
     });
   }
@@ -185,26 +205,28 @@ function initAdminTeachersPage() {
       const username = document.getElementById('newTeacherId').value.trim();
       const name = document.getElementById('newTeacherName').value.trim();
       const password = document.getElementById('newTeacherPw').value;
+      const roleInput = document.getElementById('newTeacherRole');
+      const role = roleInput ? roleInput.value : 'teacher';
       if (!username || !name || !password) return alert('모든 항목을 입력해주세요.');
 
       const res = await fetch('/admin/teachers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, name, password })
+        body: JSON.stringify({ username, name, password, role })
       });
       const data = await res.json();
       if (data.success) {
         location.reload();
       } else {
-        alert(data.error || '강사 생성 실패');
+        alert(data.error || '생성 실패');
       }
     });
   }
 
-  // Delete teacher
+  // Delete teacher/subadmin
   document.querySelectorAll('.btn-delete-teacher').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!confirm('정말 이 강사를 삭제하시겠습니까?')) return;
+      if (!confirm('정말 삭제하시겠습니까?')) return;
       const res = await fetch(`/admin/teachers/${btn.dataset.id}/delete`, { method: 'POST' });
       const data = await res.json();
       if (data.success) location.reload();
@@ -1410,14 +1432,23 @@ function initScheduleEditorPage() {
       subtitle: { ko: '', en: '' },
       description: { ko: '', en: '' },
       cards: [],
-      highlights: []
+      highlights: [],
+      classApplicationUrl: ''
     },
-    schedule_data: { days: ['월','화','수','목','금'], blocks: [] },
+    schedule_data: {
+      schedules: [{
+        id: 's_' + Date.now(),
+        title: { ko: '시간표', en: 'Schedule' },
+        dateRange: { start: '', end: '' },
+        days: ['월','화','수','목','금'],
+        blocks: []
+      }]
+    },
     syllabus_data: { subjects: [] },
     theme_data: { heroBg: '#133327', accent: '#ffffff' }
   };
 
-  // Migrate old data to bilingual format
+  // Migrate old data to bilingual format + multi-schedule
   function migrateData() {
     const hd = state.header_data;
     hd.programTitle = toBi(hd.programTitle);
@@ -1429,12 +1460,28 @@ function initScheduleEditorPage() {
     }));
     hd.highlights = (hd.highlights || []).map(h => toBi(h));
 
-    // Schedule blocks
-    const blocks = state.schedule_data.blocks || [];
-    state.schedule_data.blocks = blocks.map(b => ({
-      ...b,
-      subject: toBi(b.subject)
-    }));
+    // Migrate old single-schedule format to multi-schedule
+    const sd = state.schedule_data;
+    if (!sd.schedules) {
+      const oldDays = sd.days || ['월','화','수','목','금'];
+      const oldBlocks = (sd.blocks || []).map(b => ({ ...b, subject: toBi(b.subject) }));
+      sd.schedules = [{
+        id: 's_' + Date.now(),
+        title: { ko: '시간표', en: 'Schedule' },
+        dateRange: { start: '', end: '' },
+        days: oldDays,
+        blocks: oldBlocks
+      }];
+      delete sd.days;
+      delete sd.blocks;
+    } else {
+      // Ensure all schedules have bilingual block subjects
+      sd.schedules.forEach(sched => {
+        sched.title = toBi(sched.title);
+        sched.blocks = (sched.blocks || []).map(b => ({ ...b, subject: toBi(b.subject) }));
+        if (!sched.dateRange) sched.dateRange = { start: '', end: '' };
+      });
+    }
 
     // Syllabus subjects
     const subjects = state.syllabus_data.subjects || [];
@@ -1509,6 +1556,10 @@ function initScheduleEditorPage() {
     state.header_data.subtitle[editLang] = document.getElementById('seHeroSubtitle').value;
     state.header_data.description[editLang] = document.getElementById('seHeroDesc').value;
 
+    // Class application URL
+    const classAppUrlEl = document.getElementById('seClassAppUrl');
+    if (classAppUrlEl) state.header_data.classApplicationUrl = classAppUrlEl.value.trim();
+
     // Cards
     document.querySelectorAll('#seHeroCards .se-list-item').forEach((item, i) => {
       if (state.header_data.cards[i]) {
@@ -1524,11 +1575,8 @@ function initScheduleEditorPage() {
       }
     });
 
-    // Days
-    state.schedule_data.days = [];
-    document.querySelectorAll('#seDaysCheck input:checked').forEach(cb => {
-      state.schedule_data.days.push(cb.value);
-    });
+    // Multi-schedule states
+    collectAllScheduleStates();
 
     // Theme
     state.theme_data.heroBg = document.getElementById('seThemeHeroBg').value;
@@ -1568,6 +1616,9 @@ function initScheduleEditorPage() {
     document.getElementById('seHeroProgramTitle').value = t(state.header_data.programTitle);
     document.getElementById('seHeroSubtitle').value = t(state.header_data.subtitle);
     document.getElementById('seHeroDesc').value = t(state.header_data.description);
+
+    const classAppUrlEl = document.getElementById('seClassAppUrl');
+    if (classAppUrlEl) classAppUrlEl.value = state.header_data.classApplicationUrl || '';
   }
 
   // Render helpers
@@ -1607,19 +1658,53 @@ function initScheduleEditorPage() {
     });
   }
 
-  // Days checkbox change → re-render block grid
-  document.querySelectorAll('#seDaysCheck input').forEach(cb => {
-    cb.addEventListener('change', () => { collectState(); renderBlockGrid(); markDirty(); });
-  });
+  // ===== Multi-schedule rendering =====
+  let activeScheduleIdx = 0;
 
-  // Block grid
-  function renderBlockGrid() {
-    const wrapper = document.getElementById('seBlockGrid');
-    const days = state.schedule_data.days || [];
-    if (!days.length) { wrapper.innerHTML = '<p class="empty-message">요일을 먼저 선택해주세요.</p>'; return; }
+  function renderScheduleList() {
+    const container = document.getElementById('seScheduleList');
+    const schedules = state.schedule_data.schedules || [];
+    if (!schedules.length) {
+      container.innerHTML = '<p class="empty-message">시간표를 추가해주세요.</p>';
+      return;
+    }
 
-    const blocks = state.schedule_data.blocks || [];
-    let html = '<div class="se-block-columns">';
+    let html = '';
+    schedules.forEach((sched, si) => {
+      const allDays = ['월','화','수','목','금','토','일'];
+      const checkedDays = sched.days || [];
+
+      html += `<div class="se-schedule-card" data-sched-idx="${si}">
+        <div class="se-schedule-card-header">
+          <div class="se-sched-title">
+            <input type="text" class="se-sched-title-input" data-si="${si}" value="${esc(t(sched.title))}" placeholder="시간표 제목">
+          </div>
+          <div class="se-sched-date-range">
+            <input type="date" class="se-sched-date-start" data-si="${si}" value="${esc(sched.dateRange?.start || '')}">
+            <span>~</span>
+            <input type="date" class="se-sched-date-end" data-si="${si}" value="${esc(sched.dateRange?.end || '')}">
+          </div>
+          ${schedules.length > 1 ? `<button class="se-sched-remove" data-si="${si}" title="삭제">&times;</button>` : ''}
+        </div>
+        <div class="se-days-check" data-si="${si}">`;
+      allDays.forEach(d => {
+        html += `<label><input type="checkbox" value="${d}" data-si="${si}" ${checkedDays.includes(d) ? 'checked' : ''}> ${d}</label>`;
+      });
+      html += `</div>`;
+      html += renderBlockGridHTML(si);
+      html += `</div>`;
+    });
+    container.innerHTML = html;
+    wireScheduleCardEvents();
+  }
+
+  function renderBlockGridHTML(si) {
+    const sched = state.schedule_data.schedules[si];
+    const days = sched.days || [];
+    if (!days.length) return '<p class="empty-message" style="padding:0.5rem;">요일을 먼저 선택해주세요.</p>';
+
+    const blocks = sched.blocks || [];
+    let html = '<div class="se-block-grid"><div class="se-block-columns">';
     days.forEach(day => {
       const dayBlocks = blocks
         .map((b, i) => ({ ...b, _idx: i }))
@@ -1629,23 +1714,110 @@ function initScheduleEditorPage() {
       html += `<div class="se-block-col"><div class="se-block-col-header">${day}</div><div class="se-block-col-body">`;
       dayBlocks.forEach(b => {
         const subjText = t(b.subject);
-        html += `<div class="se-block-card" data-idx="${b._idx}" style="background:${b.color}15;border-left:3px solid ${b.color};">
+        html += `<div class="se-block-card" data-idx="${b._idx}" data-si="${si}" style="background:${b.color}15;border-left:3px solid ${b.color};">
           <div class="se-block-card-subj" style="color:${b.color};">${esc(subjText)}</div>
           <div class="se-block-card-time">${esc(b.start)} - ${esc(b.end)}</div>
         </div>`;
       });
-      html += `</div><button class="se-block-add" data-day="${day}">+ 추가</button></div>`;
+      html += `</div><button class="se-block-add" data-day="${day}" data-si="${si}">+ 추가</button></div>`;
     });
-    html += '</div>';
-    wrapper.innerHTML = html;
+    html += '</div></div>';
+    return html;
+  }
 
-    wrapper.querySelectorAll('.se-block-card').forEach(card => {
-      card.addEventListener('click', () => openBlockPopup(parseInt(card.dataset.idx)));
+  function wireScheduleCardEvents() {
+    // Days checkbox change
+    document.querySelectorAll('.se-days-check input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const si = parseInt(cb.dataset.si);
+        collectScheduleCardDays(si);
+        renderScheduleList();
+        markDirty();
+      });
     });
-    wrapper.querySelectorAll('.se-block-add').forEach(btn => {
-      btn.addEventListener('click', () => openBlockPopup(null, btn.dataset.day));
+
+    // Title / date inputs
+    document.querySelectorAll('.se-sched-title-input').forEach(inp => {
+      inp.addEventListener('input', markDirty);
+    });
+    document.querySelectorAll('.se-sched-date-start, .se-sched-date-end').forEach(inp => {
+      inp.addEventListener('change', markDirty);
+    });
+
+    // Remove schedule
+    document.querySelectorAll('.se-sched-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const si = parseInt(btn.dataset.si);
+        if (!confirm('이 시간표를 삭제하시겠습니까?')) return;
+        collectAllScheduleStates();
+        state.schedule_data.schedules.splice(si, 1);
+        renderScheduleList();
+        markDirty();
+      });
+    });
+
+    // Block cards click
+    document.querySelectorAll('.se-block-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const si = parseInt(card.dataset.si);
+        const idx = parseInt(card.dataset.idx);
+        openBlockPopup(idx, null, si);
+      });
+    });
+
+    // Block add buttons
+    document.querySelectorAll('.se-block-add').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const si = parseInt(btn.dataset.si);
+        openBlockPopup(null, btn.dataset.day, si);
+      });
     });
   }
+
+  function collectScheduleCardDays(si) {
+    const sched = state.schedule_data.schedules[si];
+    if (!sched) return;
+    const days = [];
+    document.querySelectorAll(`.se-days-check[data-si="${si}"] input:checked`).forEach(cb => {
+      days.push(cb.value);
+    });
+    sched.days = days;
+  }
+
+  function collectAllScheduleStates() {
+    const schedules = state.schedule_data.schedules || [];
+    schedules.forEach((sched, si) => {
+      // Title
+      const titleInp = document.querySelector(`.se-sched-title-input[data-si="${si}"]`);
+      if (titleInp) sched.title[editLang] = titleInp.value;
+
+      // Date range
+      const startInp = document.querySelector(`.se-sched-date-start[data-si="${si}"]`);
+      const endInp = document.querySelector(`.se-sched-date-end[data-si="${si}"]`);
+      if (!sched.dateRange) sched.dateRange = { start: '', end: '' };
+      if (startInp) sched.dateRange.start = startInp.value;
+      if (endInp) sched.dateRange.end = endInp.value;
+
+      // Days
+      collectScheduleCardDays(si);
+    });
+  }
+
+  // Add schedule button
+  document.getElementById('seAddSchedule').addEventListener('click', () => {
+    collectAllScheduleStates();
+    const schedules = state.schedule_data.schedules;
+    if (schedules.length >= 12) { alert('시간표는 최대 12개까지 추가할 수 있습니다.'); return; }
+    schedules.push({
+      id: 's_' + Date.now(),
+      title: { ko: `${schedules.length + 1}주차`, en: `Week ${schedules.length + 1}` },
+      dateRange: { start: '', end: '' },
+      days: ['월','화','수','목','금'],
+      blocks: []
+    });
+    renderScheduleList();
+    markDirty();
+  });
 
   // Block popup
   let editingBlockIdx = null;
@@ -1668,10 +1840,12 @@ function initScheduleEditorPage() {
     });
   });
 
-  function openBlockPopup(idx, day) {
+  function openBlockPopup(idx, day, schedIdx) {
+    activeScheduleIdx = schedIdx;
     editingBlockIdx = idx;
+    const sched = state.schedule_data.schedules[schedIdx];
     if (idx !== null) {
-      const b = state.schedule_data.blocks[idx];
+      const b = sched.blocks[idx];
       editingBlockDay = b.day;
       blockSubjectInput.value = t(b.subject);
       blockStartInput.value = b.start;
@@ -1699,10 +1873,11 @@ function initScheduleEditorPage() {
     const subjectVal = blockSubjectInput.value.trim();
     if (!subjectVal) { blockSubjectInput.focus(); return; }
 
-    if (!state.schedule_data.blocks) state.schedule_data.blocks = [];
+    const sched = state.schedule_data.schedules[activeScheduleIdx];
+    if (!sched.blocks) sched.blocks = [];
 
     if (editingBlockIdx !== null) {
-      const existing = state.schedule_data.blocks[editingBlockIdx];
+      const existing = sched.blocks[editingBlockIdx];
       existing.subject[editLang] = subjectVal;
       existing.start = blockStartInput.value;
       existing.end = blockEndInput.value;
@@ -1711,7 +1886,7 @@ function initScheduleEditorPage() {
     } else {
       const subjectBi = { ko: '', en: '' };
       subjectBi[editLang] = subjectVal;
-      state.schedule_data.blocks.push({
+      sched.blocks.push({
         day: editingBlockDay,
         start: blockStartInput.value,
         end: blockEndInput.value,
@@ -1720,15 +1895,15 @@ function initScheduleEditorPage() {
       });
     }
     popup.style.display = 'none';
-    renderBlockGrid();
+    renderScheduleList();
     markDirty();
   });
 
   blockDeleteBtn.addEventListener('click', () => {
     if (editingBlockIdx !== null) {
-      state.schedule_data.blocks.splice(editingBlockIdx, 1);
+      state.schedule_data.schedules[activeScheduleIdx].blocks.splice(editingBlockIdx, 1);
       popup.style.display = 'none';
-      renderBlockGrid();
+      renderScheduleList();
       markDirty();
     }
   });
@@ -1948,7 +2123,7 @@ function initScheduleEditorPage() {
       migrateData();
 
       // Show owner info if admin editing someone else's page
-      if (userRole === 'admin' && data.owner_name) {
+      if ((userRole === 'admin' || userRole === 'subadmin') && data.owner_name) {
         const ownerInfo = document.getElementById('seOwnerInfo');
         ownerInfo.textContent = `작성자: ${data.owner_name}`;
         ownerInfo.style.display = 'block';
@@ -1964,13 +2139,12 @@ function initScheduleEditorPage() {
       document.getElementById('seThemeHeroBg').value = state.theme_data.heroBg || '#133327';
       document.getElementById('seThemeAccent').value = state.theme_data.accent || '#ffffff';
 
-      // Set day checkboxes
-      const days = state.schedule_data.days || [];
-      document.querySelectorAll('#seDaysCheck input').forEach(cb => {
-        cb.checked = days.includes(cb.value);
-      });
-
       renderAll();
+
+      // Load profile image preview
+      if (state.header_data.profileImageId) {
+        showProfilePreview(state.header_data.profileImageId);
+      }
       dirty = false;
     } catch (e) { console.error(e); }
   }
@@ -1978,7 +2152,7 @@ function initScheduleEditorPage() {
   function renderAll() {
     renderCards();
     renderHighlights();
-    renderBlockGrid();
+    renderScheduleList();
     renderSyllabusTabs();
     renderSyllabusPanel();
   }
@@ -1989,6 +2163,66 @@ function initScheduleEditorPage() {
   document.getElementById('seThemeHeroBg').addEventListener('input', markDirty);
   document.getElementById('seThemeAccent').addEventListener('input', markDirty);
   document.getElementById('seStatus').addEventListener('change', markDirty);
+
+  // ===== Profile image upload =====
+  function showProfilePreview(imageId) {
+    const preview = document.getElementById('seProfileImagePreview');
+    preview.innerHTML = `<img src="/schedule-profile-image/${encodeURIComponent(imageId)}" alt="강사 프로필">`;
+    document.getElementById('seDeleteProfileImage').style.display = '';
+  }
+
+  function clearProfilePreview() {
+    document.getElementById('seProfileImagePreview').innerHTML = '';
+    document.getElementById('seDeleteProfileImage').style.display = 'none';
+  }
+
+  document.getElementById('seUploadProfileImage').addEventListener('click', () => {
+    if (!isEdit) { alert('먼저 페이지를 저장해주세요.'); return; }
+    document.getElementById('seProfileImageInput').click();
+  });
+
+  document.getElementById('seProfileImageInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const res = await fetch(`/admin/schedule-pages/${pageId}/profile-image`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success && data.profileImageId) {
+        state.header_data.profileImageId = data.profileImageId;
+        showProfilePreview(data.profileImageId);
+      } else {
+        alert(data.error || '업로드 실패');
+      }
+    } catch (err) {
+      alert('업로드 중 오류가 발생했습니다.');
+    }
+    e.target.value = '';
+  });
+
+  document.getElementById('seDeleteProfileImage').addEventListener('click', async () => {
+    if (!isEdit) return;
+    if (!confirm('프로필 이미지를 삭제하시겠습니까?')) return;
+    try {
+      const res = await fetch(`/admin/schedule-pages/${pageId}/profile-image/delete`, {
+        method: 'POST'
+      });
+      const data = await res.json();
+      if (data.success) {
+        delete state.header_data.profileImageId;
+        clearProfilePreview();
+      } else {
+        alert(data.error || '삭제 실패');
+      }
+    } catch (err) {
+      alert('삭제 중 오류가 발생했습니다.');
+    }
+  });
 
   loadData();
 }

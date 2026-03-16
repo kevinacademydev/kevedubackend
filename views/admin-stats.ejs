@@ -119,7 +119,7 @@
             <div class="stat-value"><%= enrollmentCount %></div>
             <div class="stat-label">구좌 수</div>
           </div>
-          <% if (userRole === 'admin') { %>
+          <% if (userRole === 'admin' || userRole === 'subadmin') { %>
           <div class="stat-card">
             <div class="stat-value"><%= teacherCount %></div>
             <div class="stat-label">강사 수</div>

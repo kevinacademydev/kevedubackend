@@ -1,0 +1,16 @@
+{
+  "hosting": {
+    "site": "kevedu-dev-c424f",
+    "public": "public_empty",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "chanwoo-academy",
+          "region": "asia-northeast3"
+        }
+      }
+    ]
+  }
+}

@@ -83,28 +83,38 @@
         <% }); %>
       </div>
     <% } %>
+
+    <!-- Hero CTA Buttons -->
+    <div class="sp-hero-cta-wrap">
+      <% if (hd.classApplicationUrl) { %>
+        <a href="<%= hd.classApplicationUrl %>" target="_blank" rel="noopener noreferrer" class="sp-hero-cta-btn sp-hero-cta-primary">
+          <span data-lang="ko">수업 신청하기</span>
+          <span data-lang="en" style="display:none;">Apply Now</span>
+        </a>
+      <% } %>
+      <a href="https://pf.kakao.com/_PuTpxb/chat" target="_blank" rel="noopener noreferrer" class="sp-hero-cta-btn sp-hero-cta-kakao">
+        <span data-lang="ko">문의하기</span>
+        <span data-lang="en" style="display:none;">Contact Us</span>
+      </a>
+      <a href="https://blog.naver.com/kevedu" target="_blank" rel="noopener noreferrer" class="sp-hero-cta-btn sp-hero-cta-blog">
+        <span data-lang="ko">블로그 가기</span>
+        <span data-lang="en" style="display:none;">Visit Blog</span>
+      </a>
+    </div>
   </div>
 </section>
 
-<!-- Schedule Section -->
-<% if (sd.days && sd.days.length > 0 && sd.blocks && sd.blocks.length > 0) { %>
+<!-- Schedule Section (Multi-schedule support) -->
 <%
-  let minH = 24, maxH = 0;
-  sd.blocks.forEach(b => {
-    const sh = parseInt(b.start.split(':')[0]);
-    const eh = parseInt(b.end.split(':')[0]);
-    const em = parseInt(b.end.split(':')[1] || 0);
-    if (sh < minH) minH = sh;
-    if (eh + (em > 0 ? 1 : 0) > maxH) maxH = eh + (em > 0 ? 1 : 0);
-  });
-  const startHour = minH;
-  const endHour = maxH;
-  const totalMinutes = (endHour - startHour) * 60;
-  const pxPerMin = 0.8;
-  const topPad = 12;
-  const botPad = 12;
-  const bodyH = totalMinutes * pxPerMin + topPad + botPad;
+  // Normalize: support both old {days, blocks} and new {schedules:[...]} format
+  let schedules = [];
+  if (sd.schedules && sd.schedules.length > 0) {
+    schedules = sd.schedules;
+  } else if (sd.days && sd.days.length > 0 && sd.blocks && sd.blocks.length > 0) {
+    schedules = [{ title: null, dateRange: null, days: sd.days, blocks: sd.blocks }];
+  }
 %>
+<% if (schedules.length > 0) { %>
 <section class="sp-section">
   <div class="sp-container">
     <h2 class="sp-section-title" style="color: <%= theme.heroBg || '#1a1a2e' %>;">
@@ -112,53 +122,99 @@
       <span data-lang="en" style="display:none;">Schedule Overview</span>
     </h2>
 
-    <div class="sp-timetable-wrapper">
-      <div class="sp-timetable" style="--start-hour:<%= startHour %>;--end-hour:<%= endHour %>;">
-        <!-- Time axis -->
-        <div class="sp-tt-time-col">
-          <div class="sp-tt-header-spacer"></div>
-          <div class="sp-tt-time-body" style="height:<%= bodyH %>px;">
-            <% for (let h = startHour; h <= endHour; h++) { %>
-              <div class="sp-tt-time-label" style="top:<%= (h - startHour) * 60 * pxPerMin + topPad %>px;"><%= String(h).padStart(2,'0') %>:00</div>
-            <% } %>
+    <% schedules.forEach((sched, schedIdx) => {
+      const schedBlocks = sched.blocks || [];
+      const schedDays = sched.days || [];
+      if (schedDays.length === 0 || schedBlocks.length === 0) return;
+
+      let minH = 24, maxH = 0;
+      schedBlocks.forEach(b => {
+        const sh = parseInt(b.start.split(':')[0]);
+        const eh = parseInt(b.end.split(':')[0]);
+        const em = parseInt(b.end.split(':')[1] || 0);
+        if (sh < minH) minH = sh;
+        if (eh + (em > 0 ? 1 : 0) > maxH) maxH = eh + (em > 0 ? 1 : 0);
+      });
+      const startHour = minH;
+      const endHour = maxH;
+      const totalMinutes = (endHour - startHour) * 60;
+      const pxPerMin = 0.8;
+      const topPad = 12;
+      const botPad = 12;
+      const bodyH = totalMinutes * pxPerMin + topPad + botPad;
+    %>
+      <div class="sp-timetable-section" style="<%= schedIdx > 0 ? 'margin-top:2.5rem;' : '' %>">
+        <% if (sched.title && (t(sched.title, 'ko') || t(sched.title, 'en'))) { %>
+          <h3 class="sp-timetable-subtitle">
+            <span data-lang="ko"><%= t(sched.title, 'ko') %></span>
+            <span data-lang="en" style="display:none;"><%= t(sched.title, 'en') %></span>
+          </h3>
+        <% } %>
+        <% if (sched.dateRange && (sched.dateRange.start || sched.dateRange.end)) { %>
+          <p class="sp-timetable-daterange" style="color:var(--gray-500, #868E96);font-size:0.9rem;margin-bottom:0.75rem;">
+            <%= sched.dateRange.start || '' %><% if (sched.dateRange.start && sched.dateRange.end) { %> ~ <% } %><%= sched.dateRange.end || '' %>
+          </p>
+        <% } %>
+
+        <div class="sp-timetable-wrapper">
+          <div class="sp-timetable" style="--start-hour:<%= startHour %>;--end-hour:<%= endHour %>;">
+            <!-- Time axis -->
+            <div class="sp-tt-time-col">
+              <div class="sp-tt-header-spacer"></div>
+              <div class="sp-tt-time-body" style="height:<%= bodyH %>px;">
+                <% for (let h = startHour; h <= endHour; h++) { %>
+                  <div class="sp-tt-time-label" style="top:<%= (h - startHour) * 60 * pxPerMin + topPad %>px;"><%= String(h).padStart(2,'0') %>:00</div>
+                <% } %>
+              </div>
+            </div>
+
+            <!-- Day columns -->
+            <% schedDays.forEach(day => {
+              const dayBlocks = schedBlocks.filter(b => b.day === day).sort((a,b) => a.start.localeCompare(b.start));
+            %>
+              <div class="sp-tt-day-col">
+                <div class="sp-tt-day-header">
+                  <span data-lang="ko"><%= day %></span>
+                  <span data-lang="en" style="display:none;"><%= dayMap[day] || day %></span>
+                </div>
+                <div class="sp-tt-day-body" style="height:<%= bodyH %>px;">
+                  <% for (let h = startHour; h < endHour; h++) { %>
+                    <div class="sp-tt-hour-line" style="top:<%= (h - startHour) * 60 * pxPerMin + topPad %>px;"></div>
+                  <% } %>
+                  <% dayBlocks.forEach(block => {
+                    const bsh = parseInt(block.start.split(':')[0]);
+                    const bsm = parseInt(block.start.split(':')[1] || 0);
+                    const beh = parseInt(block.end.split(':')[0]);
+                    const bem = parseInt(block.end.split(':')[1] || 0);
+                    const topPx = ((bsh - startHour) * 60 + bsm) * pxPerMin + topPad;
+                    const heightPx = ((beh * 60 + bem) - (bsh * 60 + bsm)) * pxPerMin;
+                  %>
+                    <div class="sp-tt-block" style="top:<%= topPx %>px;height:<%= heightPx %>px;background:linear-gradient(<%= block.color %>22,<%= block.color %>22),#fff;border-left:3px solid <%= block.color %>;">
+                      <div class="sp-tt-block-name" style="color:<%= block.color %>;">
+                        <span data-lang="ko"><%= t(block.subject, 'ko') %></span>
+                        <span data-lang="en" style="display:none;"><%= t(block.subject, 'en') %></span>
+                      </div>
+                      <div class="sp-tt-block-time"><%= block.start %> - <%= block.end %></div>
+                    </div>
+                  <% }); %>
+                </div>
+              </div>
+            <% }); %>
           </div>
         </div>
-
-        <!-- Day columns -->
-        <% sd.days.forEach(day => {
-          const dayBlocks = sd.blocks.filter(b => b.day === day).sort((a,b) => a.start.localeCompare(b.start));
-        %>
-          <div class="sp-tt-day-col">
-            <div class="sp-tt-day-header">
-              <span data-lang="ko"><%= day %></span>
-              <span data-lang="en" style="display:none;"><%= dayMap[day] || day %></span>
-            </div>
-            <div class="sp-tt-day-body" style="height:<%= bodyH %>px;">
-              <% for (let h = startHour; h < endHour; h++) { %>
-                <div class="sp-tt-hour-line" style="top:<%= (h - startHour) * 60 * pxPerMin + topPad %>px;"></div>
-              <% } %>
-              <% dayBlocks.forEach(block => {
-                const bsh = parseInt(block.start.split(':')[0]);
-                const bsm = parseInt(block.start.split(':')[1] || 0);
-                const beh = parseInt(block.end.split(':')[0]);
-                const bem = parseInt(block.end.split(':')[1] || 0);
-                const topPx = ((bsh - startHour) * 60 + bsm) * pxPerMin + topPad;
-                const heightPx = ((beh * 60 + bem) - (bsh * 60 + bsm)) * pxPerMin;
-              %>
-                <div class="sp-tt-block" style="top:<%= topPx %>px;height:<%= heightPx %>px;background:linear-gradient(<%= block.color %>22,<%= block.color %>22),#fff;border-left:3px solid <%= block.color %>;">
-                  <div class="sp-tt-block-name" style="color:<%= block.color %>;">
-                    <span data-lang="ko"><%= t(block.subject, 'ko') %></span>
-                    <span data-lang="en" style="display:none;"><%= t(block.subject, 'en') %></span>
-                  </div>
-                  <div class="sp-tt-block-time"><%= block.start %> - <%= block.end %></div>
-                </div>
-              <% }); %>
-            </div>
-          </div>
-        <% }); %>
       </div>
-    </div>
+    <% }); %>
   </div>
+</section>
+<% } %>
+
+<!-- Schedule CTA -->
+<% if (hd.classApplicationUrl) { %>
+<section class="sp-schedule-cta">
+  <a href="<%= hd.classApplicationUrl %>" target="_blank" rel="noopener noreferrer" class="sp-schedule-cta-btn">
+    <span data-lang="ko">수업 신청하기</span>
+    <span data-lang="en" style="display:none;">Apply Now</span>
+  </a>
 </section>
 <% } %>
 
@@ -249,6 +305,21 @@
         <% } %>
       </div>
     <% }); %>
+  </div>
+</section>
+<% } %>
+
+<!-- Profile Image Section -->
+<% if (hd.profileImageId) { %>
+<section class="sp-section">
+  <div class="sp-container">
+    <h2 class="sp-section-title" style="color: <%= theme.heroBg || '#1a1a2e' %>;">
+      <span data-lang="ko">강사 프로필</span>
+      <span data-lang="en" style="display:none;">Instructor Profile</span>
+    </h2>
+    <div class="sp-profile-image-wrap" style="text-align:center;">
+      <img src="/schedule-profile-image/<%= encodeURIComponent(hd.profileImageId) %>" alt="강사 프로필" style="max-width:100%;border-radius:8px;">
+    </div>
   </div>
 </section>
 <% } %>

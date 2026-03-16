@@ -5,6 +5,118 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>회원가입 - 케빈아카데미</title>
   <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .verify-section {
+      display: none;
+      margin-top: 1.5rem;
+      padding: 1.5rem;
+      background: #f8faf9;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 12px;
+    }
+    .verify-section.active { display: block; }
+    .verify-section h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #133327;
+      margin-bottom: 1rem;
+    }
+    .verify-method-group {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .verify-method-btn {
+      flex: 1;
+      padding: 0.75rem;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #555;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .verify-method-btn:hover { border-color: #999; }
+    .verify-method-btn.selected {
+      border-color: #133327;
+      background: #eef5f1;
+      color: #133327;
+      font-weight: 600;
+    }
+    .verify-code-area {
+      display: none;
+      margin-top: 1rem;
+    }
+    .verify-code-area.active { display: block; }
+    .verify-input-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-end;
+    }
+    .verify-input-row .form-group { flex: 1; margin-bottom: 0; }
+    .verify-input-row input {
+      font-size: 1.2rem;
+      letter-spacing: 4px;
+      text-align: center;
+      font-weight: 600;
+    }
+    .btn-verify {
+      padding: 0.75rem 1.25rem;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-send-code {
+      background: #133327;
+      color: #fff;
+    }
+    .btn-send-code:hover { background: #1a4a36; }
+    .btn-send-code:disabled { background: #999; cursor: not-allowed; }
+    .btn-confirm-code {
+      background: #2563eb;
+      color: #fff;
+    }
+    .btn-confirm-code:hover { background: #1d4ed8; }
+    .btn-confirm-code:disabled { background: #999; cursor: not-allowed; }
+    .timer {
+      text-align: center;
+      font-size: 0.85rem;
+      color: #e74c3c;
+      font-weight: 600;
+      margin-top: 0.5rem;
+    }
+    .verify-message {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+    .verify-message.error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .verify-message.success { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+
+    .complete-section {
+      display: none;
+      text-align: center;
+      padding: 2rem 0;
+    }
+    .complete-section.active { display: block; }
+    .complete-id-box {
+      background: #eef5f1;
+      border: 2px solid #133327;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1rem 0;
+    }
+    .complete-id-box .label { font-size: 0.9rem; color: #666; margin-bottom: 0.5rem; }
+    .complete-id-box .student-id { font-size: 1.8rem; font-weight: bold; color: #133327; letter-spacing: 2px; }
+  </style>
 </head>
 <body>
   <div class="auth-container">
@@ -14,77 +126,291 @@
         <p>케빈아카데미 첨삭 관리 시스템</p>
       </div>
 
-      <% if (error) { %>
-        <div class="alert alert-error"><%= error %></div>
-      <% } %>
+      <div id="alertArea">
+        <% if (error) { %>
+          <div class="alert alert-error"><%= error %></div>
+        <% } %>
+      </div>
 
-      <form action="/auth/register" method="POST" class="auth-form">
-        <div class="form-row">
-          <div class="form-group">
-            <label for="name">이름 *</label>
-            <input type="text" id="name" name="name" placeholder="홍길동" required>
+      <!-- Step 1: 폼 입력 -->
+      <div id="formSection">
+        <form id="registerForm" class="auth-form" onsubmit="return false;">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="name">이름 *</label>
+              <input type="text" id="name" name="name" placeholder="홍길동" required>
+            </div>
+            <div class="form-group">
+              <label for="name_en">영문 이름 *</label>
+              <input type="text" id="name_en" name="name_en" placeholder="James Hong" required>
+            </div>
           </div>
-          <div class="form-group">
-            <label for="name_en">영문 이름 *</label>
-            <input type="text" id="name_en" name="name_en" placeholder="James Hong" required>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="gender">성별</label>
+              <select id="gender" name="gender">
+                <option value="">선택</option>
+                <option value="남">남</option>
+                <option value="여">여</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="birth_date">생년월일</label>
+              <input type="date" id="birth_date" name="birth_date">
+            </div>
           </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="grade">학년</label>
+              <input type="number" id="grade" name="grade" placeholder="예: 9" min="1" max="13">
+            </div>
+            <div class="form-group">
+              <label for="school">학교</label>
+              <input type="text" id="school" name="school" placeholder="학교명">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="email">이메일</label>
+              <input type="email" id="email" name="email" placeholder="example@email.com">
+            </div>
+            <div class="form-group">
+              <label for="parent_phone">학부모 연락처</label>
+              <input type="tel" id="parent_phone" name="parent_phone" placeholder="010-1234-5678">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="password">비밀번호 *</label>
+              <input type="password" id="password" name="password" placeholder="비밀번호" required minlength="4">
+            </div>
+            <div class="form-group">
+              <label for="password_confirm">비밀번호 확인 *</label>
+              <input type="password" id="password_confirm" name="password_confirm" placeholder="비밀번호 확인" required>
+            </div>
+          </div>
+
+          <!-- 인증 방법 선택 -->
+          <div class="verify-section active" id="verifySection">
+            <h3>본인 인증</h3>
+            <div class="verify-method-group">
+              <button type="button" class="verify-method-btn" data-method="phone" onclick="selectMethod('phone')">
+                SMS 인증 (학부모 연락처)
+              </button>
+              <button type="button" class="verify-method-btn" data-method="email" onclick="selectMethod('email')">
+                이메일 인증
+              </button>
+            </div>
+
+            <button type="button" class="btn btn-primary btn-full btn-send-code" id="btnSendCode" onclick="sendCode()">
+              인증번호 발송
+            </button>
+
+            <!-- 인증번호 입력 -->
+            <div class="verify-code-area" id="codeArea">
+              <div class="verify-input-row">
+                <div class="form-group">
+                  <label>인증번호 6자리</label>
+                  <input type="text" id="verifyCodeInput" maxlength="6" placeholder="000000" inputmode="numeric" pattern="[0-9]*">
+                </div>
+                <button type="button" class="btn-verify btn-confirm-code" id="btnVerifyCode" onclick="verifyCode()">확인</button>
+              </div>
+              <div class="timer" id="timer"></div>
+            </div>
+
+            <div id="verifyMessage"></div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Step 2: 가입 완료 -->
+      <div class="complete-section" id="completeSection">
+        <p style="font-size: 1.1rem; margin-bottom: 1rem;"><strong id="completeName"></strong> 학생, 환영합니다!</p>
+        <div class="complete-id-box">
+          <p class="label">학생 아이디</p>
+          <p class="student-id" id="completeId"></p>
         </div>
+        <p style="font-size: 0.85rem; color: #888; margin-top: 1rem;">이 아이디로 로그인할 수 있습니다.<br>학부모 연락처와 이메일로도 전송되었습니다.</p>
+        <a href="/" class="btn btn-primary btn-full" style="text-decoration: none; text-align: center; display: block; margin-top: 1.5rem;">로그인하기</a>
+      </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="gender">성별</label>
-            <select id="gender" name="gender">
-              <option value="">선택</option>
-              <option value="남">남</option>
-              <option value="여">여</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="birth_date">생년월일</label>
-            <input type="date" id="birth_date" name="birth_date">
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="grade">학년</label>
-            <input type="number" id="grade" name="grade" placeholder="예: 9" min="1" max="13">
-          </div>
-          <div class="form-group">
-            <label for="school">학교</label>
-            <input type="text" id="school" name="school" placeholder="학교명">
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="email">이메일</label>
-            <input type="email" id="email" name="email" placeholder="example@email.com">
-          </div>
-          <div class="form-group">
-            <label for="parent_phone">학부모 연락처</label>
-            <input type="tel" id="parent_phone" name="parent_phone" placeholder="010-1234-5678">
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="password">비밀번호 *</label>
-            <input type="password" id="password" name="password" placeholder="비밀번호" required minlength="4">
-          </div>
-          <div class="form-group">
-            <label for="password_confirm">비밀번호 확인 *</label>
-            <input type="password" id="password_confirm" name="password_confirm" placeholder="비밀번호 확인" required>
-          </div>
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-full">회원가입</button>
-      </form>
-
-      <div class="auth-footer">
+      <div class="auth-footer" id="authFooter">
         <a href="/">로그인으로 돌아가기</a>
       </div>
     </div>
   </div>
+
+  <script>
+    let selectedMethod = null;
+    let timerInterval = null;
+    let timerSeconds = 0;
+
+    function selectMethod(method) {
+      selectedMethod = method;
+      document.querySelectorAll('.verify-method-btn').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.method === method);
+      });
+
+      // 해당 필드에 값이 있는지 확인
+      const target = method === 'phone'
+        ? document.getElementById('parent_phone').value.trim()
+        : document.getElementById('email').value.trim();
+
+      if (!target) {
+        showMessage(method === 'phone' ? '학부모 연락처를 먼저 입력해주세요.' : '이메일을 먼저 입력해주세요.', 'error');
+      }
+    }
+
+    function getFormData() {
+      return {
+        name: document.getElementById('name').value.trim(),
+        name_en: document.getElementById('name_en').value.trim(),
+        birth_date: document.getElementById('birth_date').value,
+        grade: document.getElementById('grade').value,
+        school: document.getElementById('school').value.trim(),
+        parent_phone: document.getElementById('parent_phone').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        gender: document.getElementById('gender').value,
+        password: document.getElementById('password').value,
+        password_confirm: document.getElementById('password_confirm').value,
+        verify_method: selectedMethod
+      };
+    }
+
+    async function sendCode() {
+      if (!selectedMethod) {
+        showMessage('인증 방법을 선택해주세요.', 'error');
+        return;
+      }
+
+      const formData = getFormData();
+
+      // 기본 검증
+      if (!formData.name || !formData.name_en || !formData.password) {
+        showMessage('필수 항목(이름, 영문 이름, 비밀번호)을 모두 입력해주세요.', 'error');
+        return;
+      }
+      if (formData.password !== formData.password_confirm) {
+        showMessage('비밀번호가 일치하지 않습니다.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btnSendCode');
+      btn.disabled = true;
+      btn.textContent = '발송 중...';
+
+      try {
+        const res = await fetch('/auth/register/send-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          showMessage('인증번호가 발송되었습니다. 5분 내에 입력해주세요.', 'success');
+          document.getElementById('codeArea').classList.add('active');
+          document.getElementById('verifyCodeInput').focus();
+          startTimer(300);
+          // 폼 필드 비활성화
+          document.querySelectorAll('#registerForm input, #registerForm select').forEach(el => {
+            if (el.id !== 'verifyCodeInput') el.disabled = true;
+          });
+          document.querySelectorAll('.verify-method-btn').forEach(b => b.disabled = true);
+          btn.textContent = '재발송';
+          btn.disabled = false;
+        } else {
+          showMessage(data.message, 'error');
+          btn.textContent = '인증번호 발송';
+          btn.disabled = false;
+        }
+      } catch (err) {
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
+        btn.textContent = '인증번호 발송';
+        btn.disabled = false;
+      }
+    }
+
+    async function verifyCode() {
+      const code = document.getElementById('verifyCodeInput').value.trim();
+      if (!code || code.length !== 6) {
+        showMessage('6자리 인증번호를 입력해주세요.', 'error');
+        return;
+      }
+
+      const target = selectedMethod === 'phone'
+        ? document.getElementById('parent_phone').value.trim()
+        : document.getElementById('email').value.trim();
+
+      const btn = document.getElementById('btnVerifyCode');
+      btn.disabled = true;
+      btn.textContent = '확인 중...';
+
+      try {
+        const res = await fetch('/auth/register/verify-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target, target_type: selectedMethod, code })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          clearInterval(timerInterval);
+          // 가입 완료 화면
+          document.getElementById('formSection').style.display = 'none';
+          document.getElementById('authFooter').style.display = 'none';
+          document.getElementById('alertArea').innerHTML = '';
+          document.getElementById('completeName').textContent = data.name;
+          document.getElementById('completeId').textContent = data.studentId;
+          document.getElementById('completeSection').classList.add('active');
+        } else {
+          showMessage(data.message, 'error');
+          btn.disabled = false;
+          btn.textContent = '확인';
+        }
+      } catch (err) {
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
+        btn.disabled = false;
+        btn.textContent = '확인';
+      }
+    }
+
+    function startTimer(seconds) {
+      clearInterval(timerInterval);
+      timerSeconds = seconds;
+      updateTimerDisplay();
+      timerInterval = setInterval(() => {
+        timerSeconds--;
+        if (timerSeconds <= 0) {
+          clearInterval(timerInterval);
+          document.getElementById('timer').textContent = '인증번호가 만료되었습니다. 다시 발송해주세요.';
+          document.getElementById('btnVerifyCode').disabled = true;
+          // 폼 필드 다시 활성화
+          document.querySelectorAll('#registerForm input, #registerForm select').forEach(el => {
+            el.disabled = false;
+          });
+          document.querySelectorAll('.verify-method-btn').forEach(b => b.disabled = false);
+          return;
+        }
+        updateTimerDisplay();
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      const min = Math.floor(timerSeconds / 60);
+      const sec = timerSeconds % 60;
+      document.getElementById('timer').textContent = `남은 시간: ${min}:${String(sec).padStart(2, '0')}`;
+    }
+
+    function showMessage(msg, type) {
+      const el = document.getElementById('verifyMessage');
+      el.className = 'verify-message ' + type;
+      el.textContent = msg;
+    }
+  </script>
 </body>
 </html>

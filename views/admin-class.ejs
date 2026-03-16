@@ -26,7 +26,7 @@
            data-user-role="<%= userRole %>"
            data-user-id="<%= userId %>">
 
-        <% if (userRole === 'admin') { %>
+        <% if (userRole === 'admin' || userRole === 'subadmin') { %>
         <div class="card" style="margin-bottom:1.5rem;">
           <div class="card-header">
             <h3>수업 설정</h3>
@@ -99,13 +99,13 @@
                   <% classTeachers.forEach(t => { %>
                     <div class="file-item">
                       <span><%= t.name %> (<%= t.username %>)</span>
-                      <% if (userRole === 'admin') { %>
+                      <% if (userRole === 'admin' || userRole === 'subadmin') { %>
                         <button class="btn btn-sm btn-danger btn-remove-teacher" data-tid="<%= t.id %>">해제</button>
                       <% } %>
                     </div>
                   <% }) %>
                 <% } %>
-                <% if (userRole === 'admin') { %>
+                <% if (userRole === 'admin' || userRole === 'subadmin') { %>
                   <div class="add-class-row" style="margin-top:0.75rem;">
                     <select id="addTeacherSelect" class="add-class-input">
                       <option value="">강사 선택...</option>
