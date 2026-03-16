@@ -957,6 +957,22 @@ function initDashboardSchedules() {
   const navNext = document.getElementById('dashNavNext');
   const navToday = document.getElementById('dashNavToday');
 
+  // Teacher filter (admin/subadmin only)
+  const teacherFilter = document.getElementById('dashTeacherFilter');
+  if (teacherFilter) {
+    fetch(window.__SEC + '/dashboard-teachers')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        (data.teachers || []).forEach(function(t) {
+          var opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = t.name;
+          teacherFilter.appendChild(opt);
+        });
+      });
+    teacherFilter.addEventListener('change', function() { loadAndRender(); });
+  }
+
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       tabs.forEach(t => {
@@ -1033,7 +1049,11 @@ function initDashboardSchedules() {
     updateNavTitle();
     const range = getDateRange();
     try {
-      const res = await fetch(`${window.__SEC}/dashboard-schedules?start=${range.start}&end=${range.end}`);
+      let url = `${window.__SEC}/dashboard-schedules?start=${range.start}&end=${range.end}`;
+      if (teacherFilter && teacherFilter.value) {
+        url += `&teacher_id=${teacherFilter.value}`;
+      }
+      const res = await fetch(url);
       const data = await res.json();
       schedules = data.schedules || [];
     } catch (e) {
@@ -1950,12 +1970,12 @@ function initScheduleEditorPage() {
       <div class="form-group"><label>배치 기준 (Placement)</label><input class="se-subj-placement" value="${esc(t(subj.placement))}"></div>
 
       <div class="se-list-section">
-        <label>주별 계획</label>
+        <label>회차별 진도</label>
         <div class="se-subj-weeks">`;
     (subj.weeklyPlan || []).forEach((wp, wi) => {
-      html += `<div class="se-list-item se-subj-wp"><input class="se-wp-week" value="${esc(wp.week)}" placeholder="Week 1-2" style="width:120px;"><input class="se-wp-topic" value="${esc(t(wp.topic))}" placeholder="주제"><button class="se-list-remove" data-wp="${wi}">&times;</button></div>`;
+      html += `<div class="se-list-item se-subj-wp"><input class="se-wp-week" value="${esc(wp.week)}" placeholder="1회차" style="width:120px;"><input class="se-wp-topic" value="${esc(t(wp.topic))}" placeholder="주제"><button class="se-list-remove" data-wp="${wi}">&times;</button></div>`;
     });
-    html += `</div><button class="btn btn-sm btn-outline se-add-wp">+ 주별 계획</button></div>
+    html += `</div><button class="btn btn-sm btn-outline se-add-wp">+ 회차 추가</button></div>
 
       <div><button class="btn btn-sm btn-danger se-remove-subj">이 과목 삭제</button></div>
     </div>`;
@@ -1984,7 +2004,9 @@ function initScheduleEditorPage() {
 
     panel.querySelector('.se-add-wp')?.addEventListener('click', () => {
       collectSyllabusState();
-      state.syllabus_data.subjects[activeSyllabusIdx].weeklyPlan.push({ week: '', topic: { ko: '', en: '' } });
+      const wp = state.syllabus_data.subjects[activeSyllabusIdx].weeklyPlan;
+      const nextNum = wp.length + 1;
+      wp.push({ week: nextNum + '회차', topic: { ko: '', en: '' } });
       renderSyllabusPanel();
       markDirty();
     });
