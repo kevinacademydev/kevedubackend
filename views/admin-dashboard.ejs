@@ -274,47 +274,54 @@
   <script>window.__SEC='<%= sectionPath %>';window.__BASE='<%= basePath %>'</script>
   <script src="/js/app.js"></script>
   <script>
-    // 대시보드 파일 관리 미니 위젯
+    // 대시보드 파일 관리 미니 위젯 (전체 드라이브 재귀 탐색)
     (function() {
       const section = document.getElementById('dashFileSection');
       if (!section) return;
 
+      async function fetchAllFiles(prefix) {
+        const res = await fetch(window.__SEC + '/files/list?prefix=' + encodeURIComponent(prefix));
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+        let allFiles = (data.files || []).map(f => ({ ...f, folder: prefix }));
+        const folders = data.prefixes || [];
+        for (const folder of folders) {
+          const sub = await fetchAllFiles(folder.fullPath);
+          allFiles = allFiles.concat(sub);
+        }
+        return allFiles;
+      }
+
       async function loadRecentFiles() {
         try {
-          const res = await fetch(window.__SEC + '/files/list?prefix=uploads/');
-          if (!res.ok) throw new Error('Failed');
-          const data = await res.json();
+          const allFiles = await fetchAllFiles('');
 
-          const files = data.files || [];
-          if (files.length === 0 && (!data.prefixes || data.prefixes.length === 0)) {
+          if (allFiles.length === 0) {
             section.innerHTML = '<p class="empty-message">업로드된 파일이 없습니다. <a href="<%= sectionPath %>/files">파일 탐색기</a>에서 업로드하세요.</p>';
             return;
           }
 
-          // 최근 5개 파일만 표시
-          const recent = files.sort((a, b) => new Date(b.updated) - new Date(a.updated)).slice(0, 5);
-          const folderCount = (data.prefixes || []).length;
+          // 최근 10개 파일 표시
+          const recent = allFiles.sort((a, b) => new Date(b.updated) - new Date(a.updated)).slice(0, 10);
 
           let html = '<div class="file-list">';
           recent.forEach(f => {
             const icon = f.contentType && f.contentType.startsWith('image/') ? '&#128444;' : '&#128196;';
             const size = formatSize(f.size);
             const date = f.updated ? new Date(f.updated).toLocaleDateString('ko-KR') : '';
+            const folder = f.folder ? '<span style="color:#94a3b8;font-size:0.75rem;">' + escapeHtml(f.folder) + '</span> ' : '';
             html += '<div class="file-item">';
             html += '  <div class="file-info">';
-            html += '    <span class="file-name">' + icon + ' ' + escapeHtml(f.name) + '</span>';
+            html += '    <span class="file-name">' + icon + ' ' + folder + escapeHtml(f.name) + '</span>';
             html += '    <span class="file-date">' + size + ' | ' + date + '</span>';
             html += '  </div>';
             html += '</div>';
           });
           html += '</div>';
 
-          if (files.length > 5 || folderCount > 0) {
-            html += '<p style="margin-top:0.75rem;font-size:0.85rem;color:#64748b;">';
-            html += '총 ' + files.length + '개 파일';
-            if (folderCount > 0) html += ', ' + folderCount + '개 폴더';
-            html += ' — <a href="<%= sectionPath %>/files">전체 보기</a></p>';
-          }
+          html += '<p style="margin-top:0.75rem;font-size:0.85rem;color:#64748b;">';
+          html += '총 ' + allFiles.length + '개 파일';
+          html += ' — <a href="<%= sectionPath %>/files">전체 보기</a></p>';
 
           section.innerHTML = html;
         } catch (err) {

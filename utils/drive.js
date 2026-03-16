@@ -91,6 +91,18 @@ async function deleteFile(filePath) {
   }
 }
 
+// latin1로 깨진 한글 파일명 복원 시도
+function fixMojibake(str) {
+  try {
+    const buf = Buffer.from(str, 'latin1');
+    const decoded = buf.toString('utf8');
+    if (/[\uAC00-\uD7AF\u3131-\u318E]/.test(decoded) && !decoded.includes('\ufffd')) {
+      return decoded;
+    }
+  } catch (e) {}
+  return str;
+}
+
 // 폴더/파일 목록 조회 (prefix 기반 탐색)
 // delimiter '/'를 사용하여 현재 경로의 폴더(prefixes)와 파일(files)을 분리 반환
 async function listFiles(prefix = '') {
@@ -104,7 +116,7 @@ async function listFiles(prefix = '') {
   });
 
   const prefixes = (apiResponse.prefixes || []).map(p => ({
-    name: p.replace(prefix, '').replace(/\/$/, ''),
+    name: fixMojibake(p.replace(prefix, '').replace(/\/$/, '')),
     fullPath: p,
     isFolder: true,
   }));
@@ -112,7 +124,7 @@ async function listFiles(prefix = '') {
   const fileList = files
     .filter(f => f.name !== prefix) // 자기 자신(폴더 placeholder) 제외
     .map(f => ({
-      name: f.name.replace(prefix, ''),
+      name: fixMojibake(f.name.replace(prefix, '')),
       fullPath: f.name,
       size: Number(f.metadata.size || 0),
       contentType: f.metadata.contentType || 'application/octet-stream',
