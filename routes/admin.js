@@ -1611,9 +1611,10 @@ router.post('/files/upload', requireAdmin, upload.array('files', 20), async (req
     if (prefix && !prefix.endsWith('/')) prefix += '/';
     const results = [];
     for (const file of req.files) {
-      const filePath = prefix + file.originalname;
+      const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+      const filePath = prefix + originalName;
       await uploadFileDirect(file.buffer, filePath, file.mimetype);
-      results.push({ name: file.originalname, path: filePath });
+      results.push({ name: originalName, path: filePath });
     }
     res.json({ success: true, files: results });
   } catch (err) {
