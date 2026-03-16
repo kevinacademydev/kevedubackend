@@ -11,7 +11,7 @@
     <!-- Sidebar -->
     <aside class="student-sidebar" id="studentSidebar">
       <div class="sidebar-header">
-        <a href="/student" class="sidebar-logo">
+        <a href="/management/student" class="sidebar-logo">
           <img src="/images/logo-horizontal-inverted.png" alt="Kevin Academy">
         </a>
         <button class="sidebar-close" id="sidebarClose">&times;</button>
@@ -30,7 +30,7 @@
             <% } else { %>
               <% myClasses.forEach(cls => { %>
                 <li>
-                  <a href="/student/class/<%= cls.id %>" class="sidebar-submenu-item">
+                  <a href="/management/student/class/<%= cls.id %>" class="sidebar-submenu-item">
                     <%= cls.name %>
                   </a>
                 </li>
@@ -76,7 +76,7 @@
             <div class="sidebar-user-role">학생</div>
           </div>
         </div>
-        <a href="/auth/logout" class="sidebar-logout" title="로그아웃">&#9109; 로그아웃</a>
+        <a href="/management/auth/logout" class="sidebar-logout" title="로그아웃">&#9109; 로그아웃</a>
       </div>
     </aside>
 
@@ -100,7 +100,7 @@
         <% } else { %>
           <div class="class-grid">
             <% myClasses.forEach(cls => { %>
-              <a href="/student/class/<%= cls.id %>" class="class-card">
+              <a href="/management/student/class/<%= cls.id %>" class="class-card">
                 <div class="class-card-info">
                   <strong><%= cls.name %></strong>
                   <span class="badge"><%= cls.type === 'regular' ? '정규' : cls.type === 'team' ? '그룹' : '개인' %></span>

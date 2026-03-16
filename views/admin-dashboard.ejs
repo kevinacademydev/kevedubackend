@@ -72,7 +72,7 @@
                 <% } else { %>
                   <div class="class-list">
                     <% classes.forEach(cls => { %>
-                      <a href="/admin/class/<%= cls.id %>" class="class-card <%= cls.status === 'inactive' ? 'class-inactive' : '' %>">
+                      <a href="<%= sectionPath %>/class/<%= cls.id %>" class="class-card <%= cls.status === 'inactive' ? 'class-inactive' : '' %>">
                         <div class="class-card-info">
                           <strong><%= cls.name %></strong>
                           <span class="badge"><%= cls.type === 'regular' ? '정규' : cls.type === 'team' ? '그룹' : '개인' %></span>
@@ -94,7 +94,7 @@
               <div class="card-header">
                 <h3>강사 관리</h3>
                 <div style="display:flex;gap:0.5rem;align-items:center;">
-                  <a href="/admin/teachers" class="btn btn-sm btn-outline">더보기</a>
+                  <a href="<%= sectionPath %>/teachers" class="btn btn-sm btn-outline">더보기</a>
                   <% if (userRole === 'admin') { %>
                     <button class="btn btn-sm btn-primary" id="btnCreateTeacher">+ 강사 생성</button>
                   <% } %>
@@ -131,7 +131,7 @@
             <div class="card" style="margin-top: 1.5rem;">
               <div class="card-header">
                 <h3>통계</h3>
-                <a href="/admin/stats" class="btn btn-sm btn-outline">더보기</a>
+                <a href="<%= sectionPath %>/stats" class="btn btn-sm btn-outline">더보기</a>
               </div>
               <div class="card-body">
                 <p><%= userRole === 'admin' || userRole === 'subadmin' ? '전체' : '담당' %> 수업: <strong><%= classes.length %></strong>개</p>
@@ -149,7 +149,7 @@
             <div class="card">
               <div class="card-header">
                 <h3>최근 과제 제출</h3>
-                <a href="/admin/submissions" class="btn btn-sm btn-outline">더보기</a>
+                <a href="<%= sectionPath %>/submissions" class="btn btn-sm btn-outline">더보기</a>
               </div>
               <div class="card-body">
                 <% if (submissions.length === 0) { %>
@@ -160,7 +160,7 @@
                       <div class="file-item">
                         <div class="file-info">
                           <span class="file-name">
-                            <a href="/admin/student/<%= s.student_id %>" class="student-link"><%= s.username %></a> - <%= s.file_name %>
+                            <a href="<%= sectionPath %>/student/<%= s.student_id %>" class="student-link"><%= s.username %></a> - <%= s.file_name %>
                           </span>
                           <span class="file-date"><%= s.class_name %> | <%= s.submitted_at %></span>
                         </div>
@@ -174,7 +174,7 @@
             <div class="card" style="margin-top: 1.5rem;">
               <div class="card-header">
                 <h3>최근 채점 업로드</h3>
-                <a href="/admin/graded" class="btn btn-sm btn-outline">더보기</a>
+                <a href="<%= sectionPath %>/graded" class="btn btn-sm btn-outline">더보기</a>
               </div>
               <div class="card-body">
                 <% if (gradedFiles.length === 0) { %>
@@ -185,7 +185,7 @@
                       <div class="file-item">
                         <div class="file-info">
                           <span class="file-name">
-                            <a href="/admin/student/<%= g.student_id %>" class="student-link"><%= g.username %></a> - <%= g.file_name %>
+                            <a href="<%= sectionPath %>/student/<%= g.student_id %>" class="student-link"><%= g.username %></a> - <%= g.file_name %>
                           </span>
                           <span class="file-date"><%= g.class_name %> | <%= g.uploaded_at %></span>
                         </div>
@@ -202,7 +202,7 @@
             <div class="card">
               <div class="card-header">
                 <h3>&#128193; 파일 관리</h3>
-                <a href="/admin/files" class="btn btn-sm btn-primary">파일 탐색기 열기</a>
+                <a href="<%= sectionPath %>/files" class="btn btn-sm btn-primary">파일 탐색기 열기</a>
               </div>
               <div class="card-body" id="dashFileSection">
                 <p class="empty-message">최근 파일을 불러오는 중...</p>
@@ -271,6 +271,7 @@
     </div>
   </div>
 
+  <script>window.__SEC='<%= sectionPath %>';window.__BASE='<%= basePath %>'</script>
   <script src="/js/app.js"></script>
   <script>
     // 대시보드 파일 관리 미니 위젯
@@ -280,13 +281,13 @@
 
       async function loadRecentFiles() {
         try {
-          const res = await fetch('/admin/files/list?prefix=uploads/');
+          const res = await fetch(window.__SEC + '/files/list?prefix=uploads/');
           if (!res.ok) throw new Error('Failed');
           const data = await res.json();
 
           const files = data.files || [];
           if (files.length === 0 && (!data.prefixes || data.prefixes.length === 0)) {
-            section.innerHTML = '<p class="empty-message">업로드된 파일이 없습니다. <a href="/admin/files">파일 탐색기</a>에서 업로드하세요.</p>';
+            section.innerHTML = '<p class="empty-message">업로드된 파일이 없습니다. <a href="<%= sectionPath %>/files">파일 탐색기</a>에서 업로드하세요.</p>';
             return;
           }
 
@@ -312,12 +313,12 @@
             html += '<p style="margin-top:0.75rem;font-size:0.85rem;color:#64748b;">';
             html += '총 ' + files.length + '개 파일';
             if (folderCount > 0) html += ', ' + folderCount + '개 폴더';
-            html += ' — <a href="/admin/files">전체 보기</a></p>';
+            html += ' — <a href="<%= sectionPath %>/files">전체 보기</a></p>';
           }
 
           section.innerHTML = html;
         } catch (err) {
-          section.innerHTML = '<p class="empty-message">파일 목록을 불러올 수 없습니다. <a href="/admin/files">파일 탐색기</a></p>';
+          section.innerHTML = '<p class="empty-message">파일 목록을 불러올 수 없습니다. <a href="<%= sectionPath %>/files">파일 탐색기</a></p>';
         }
       }
 

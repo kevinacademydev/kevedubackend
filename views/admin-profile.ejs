@@ -31,7 +31,7 @@
               <div class="alert alert-danger" style="margin-bottom:1rem;padding:0.75rem;background:#f8d7da;border:1px solid #f5c6cb;border-radius:var(--radius);color:#721c24;font-size:0.9rem;"><%= error %></div>
             <% } %>
 
-            <form method="POST" action="/admin/profile">
+            <form method="POST" action="<%= sectionPath %>/profile">
               <div class="form-group" style="margin-bottom:1rem;">
                 <label>아이디</label>
                 <input type="text" name="username" value="<%= profile.username %>" required>
@@ -58,6 +58,7 @@
     </main>
   </div>
 
+  <script>window.__SEC='<%= sectionPath %>';window.__BASE='<%= basePath %>'</script>
   <script src="/js/app.js"></script>
 </body>
 </html>

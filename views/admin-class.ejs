@@ -138,7 +138,7 @@
                       <tbody>
                         <% students.forEach(s => { %>
                           <tr class="<%= s.enrollment_status === 'dropped' ? 'class-inactive' : '' %>">
-                            <td><a href="/admin/student/<%= s.id %>" class="student-link"><%= s.name %></a> <span style="color:var(--gray-500);font-size:0.8rem;"><%= s.username %></span></td>
+                            <td><a href="<%= sectionPath %>/student/<%= s.id %>" class="student-link"><%= s.name %></a> <span style="color:var(--gray-500);font-size:0.8rem;"><%= s.username %></span></td>
                             <td style="color:var(--gray-600);font-size:0.85rem;"><%= s.name_en || '-' %></td>
                             <td><span class="badge"><%= s.enrollment_status === 'active' ? '등록' : '해제' %></span></td>
                             <td>
@@ -211,7 +211,7 @@
                           <span class="file-name"><%= s.student_name %> (<%= s.username %>) - <%= s.file_name %></span>
                           <span class="file-date"><%= s.submitted_at %></span>
                         </div>
-                        <a href="/admin/class/<%= cls.id %>/file/<%= s.id %>" class="btn btn-sm btn-outline">다운로드</a>
+                        <a href="<%= sectionPath %>/class/<%= cls.id %>/file/<%= s.id %>" class="btn btn-sm btn-outline">다운로드</a>
                       </div>
                     <% }) %>
                   </div>
@@ -287,7 +287,7 @@
                     <% activeStudents.forEach(s => { %>
                       <tr data-student-id="<%= s.id %>">
                         <td style="position:sticky;left:0;background:white;z-index:1;white-space:nowrap;width:120px;min-width:120px;font-size:0.8rem;">
-                          <a href="/admin/student/<%= s.id %>" class="student-link"><%= s.name %></a> <span style="color:var(--gray-500);font-size:0.7rem;"><%= s.username.replace('student','') %></span>
+                          <a href="<%= sectionPath %>/student/<%= s.id %>" class="student-link"><%= s.name %></a> <span style="color:var(--gray-500);font-size:0.7rem;"><%= s.username.replace('student','') %></span>
                         </td>
                         <% classSchedules.forEach(sch => { %>
                           <td style="padding:0.2rem;">
@@ -353,6 +353,7 @@
     </div>
   </div>
 
+  <script>window.__SEC='<%= sectionPath %>';window.__BASE='<%= basePath %>'</script>
   <script src="/js/app.js"></script>
 </body>
 </html>

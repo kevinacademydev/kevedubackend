@@ -7,7 +7,7 @@ const { uploadFile, downloadFile } = require('../utils/drive');
 // 학생 인증 미들웨어
 function requireStudent(req, res, next) {
   if (!req.session.user || req.session.user.role !== 'student') {
-    return res.redirect('/');
+    return res.redirect('/management');
   }
   next();
 }

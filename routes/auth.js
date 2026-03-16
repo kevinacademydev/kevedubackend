@@ -176,10 +176,13 @@ router.post('/login', async (req, res) => {
           name: row.name,
           role: row.role
         };
-        if (row.role === 'admin' || row.role === 'subadmin' || row.role === 'teacher') {
-          return res.redirect('/admin');
+        if (row.role === 'admin' || row.role === 'subadmin') {
+          return res.redirect('/management/admin');
         }
-        return res.redirect('/student');
+        if (row.role === 'teacher') {
+          return res.redirect('/management/teacher');
+        }
+        return res.redirect('/management/student');
       }
     }
     res.render('login', { error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
@@ -339,7 +342,7 @@ router.post('/forgot-password/reset', async (req, res) => {
 
 router.get('/logout', (req, res) => {
   req.session = null;
-  res.redirect('/');
+  res.redirect('/management');
 });
 
 module.exports = router;

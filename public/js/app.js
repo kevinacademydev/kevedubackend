@@ -106,7 +106,7 @@ function initAdminDashboard() {
       const type = document.getElementById('newClassType').value;
       if (!name) return alert('수업 이름을 입력해주세요.');
 
-      const res = await fetch('/admin/classes', {
+      const res = await fetch(window.__SEC + '/classes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, type })
@@ -140,7 +140,7 @@ function initAdminDashboard() {
       const role = roleInput ? roleInput.value : 'teacher';
       if (!username || !name || !password) return alert('모든 항목을 입력해주세요.');
 
-      const res = await fetch('/admin/teachers', {
+      const res = await fetch(window.__SEC + '/teachers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, name, password, role })
@@ -158,7 +158,7 @@ function initAdminDashboard() {
   document.querySelectorAll('.btn-delete-teacher').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('정말 삭제하시겠습니까?')) return;
-      const res = await fetch(`/admin/teachers/${btn.dataset.id}/delete`, { method: 'POST' });
+      const res = await fetch(`${window.__SEC}/teachers/${btn.dataset.id}/delete`, { method: 'POST' });
       const data = await res.json();
       if (data.success) location.reload();
       else alert(data.error || '삭제 실패');
@@ -209,7 +209,7 @@ function initAdminTeachersPage() {
       const role = roleInput ? roleInput.value : 'teacher';
       if (!username || !name || !password) return alert('모든 항목을 입력해주세요.');
 
-      const res = await fetch('/admin/teachers', {
+      const res = await fetch(window.__SEC + '/teachers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, name, password, role })
@@ -227,7 +227,7 @@ function initAdminTeachersPage() {
   document.querySelectorAll('.btn-delete-teacher').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('정말 삭제하시겠습니까?')) return;
-      const res = await fetch(`/admin/teachers/${btn.dataset.id}/delete`, { method: 'POST' });
+      const res = await fetch(`${window.__SEC}/teachers/${btn.dataset.id}/delete`, { method: 'POST' });
       const data = await res.json();
       if (data.success) location.reload();
       else alert(data.error || '삭제 실패');
@@ -257,7 +257,7 @@ function initAdminClassPage() {
       const status = document.getElementById('editClassStatus').value;
       if (!name) return alert('수업 이름을 입력해주세요.');
 
-      const res = await fetch(`/admin/class/${classId}/edit`, {
+      const res = await fetch(`${window.__SEC}/class/${classId}/edit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, type, status })
@@ -273,9 +273,9 @@ function initAdminClassPage() {
   if (btnDelete) {
     btnDelete.addEventListener('click', async () => {
       if (!confirm('정말 이 수업을 삭제하시겠습니까? 모든 관련 데이터가 삭제됩니다.')) return;
-      const res = await fetch(`/admin/class/${classId}/delete`, { method: 'POST' });
+      const res = await fetch(`${window.__SEC}/class/${classId}/delete`, { method: 'POST' });
       const data = await res.json();
-      if (data.success) location.href = '/admin';
+      if (data.success) location.href = window.__SEC;
       else alert(data.error || '삭제 실패');
     });
   }
@@ -287,7 +287,7 @@ function initAdminClassPage() {
       const tid = document.getElementById('addTeacherSelect').value;
       if (!tid) return alert('강사를 선택해주세요.');
 
-      const res = await fetch(`/admin/class/${classId}/teachers`, {
+      const res = await fetch(`${window.__SEC}/class/${classId}/teachers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ teacher_id: tid })
@@ -302,7 +302,7 @@ function initAdminClassPage() {
   document.querySelectorAll('.btn-remove-teacher').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('강사 배정을 해제하시겠습니까?')) return;
-      const res = await fetch(`/admin/class/${classId}/teachers/${btn.dataset.tid}/remove`, { method: 'POST' });
+      const res = await fetch(`${window.__SEC}/class/${classId}/teachers/${btn.dataset.tid}/remove`, { method: 'POST' });
       const data = await res.json();
       if (data.success) location.reload();
       else alert(data.error || '해제 실패');
@@ -319,7 +319,7 @@ function initAdminClassPage() {
       const sid = document.getElementById('addStudentSelect').value;
       if (!sid) return alert('학생을 선택해주세요.');
 
-      const res = await fetch(`/admin/class/${classId}/enroll`, {
+      const res = await fetch(`${window.__SEC}/class/${classId}/enroll`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ student_id: sid })
@@ -334,7 +334,7 @@ function initAdminClassPage() {
   document.querySelectorAll('.btn-unenroll').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('학생 등록을 해제하시겠습니까?')) return;
-      const res = await fetch(`/admin/class/${classId}/unenroll`, {
+      const res = await fetch(`${window.__SEC}/class/${classId}/unenroll`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ student_id: btn.dataset.sid })
@@ -348,7 +348,7 @@ function initAdminClassPage() {
   // Re-enroll
   document.querySelectorAll('.btn-reenroll').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const res = await fetch(`/admin/class/${classId}/enroll`, {
+      const res = await fetch(`${window.__SEC}/class/${classId}/enroll`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ student_id: btn.dataset.sid })
@@ -372,7 +372,7 @@ function initAdminClassPage() {
       document.getElementById('gradingResults').innerHTML = '';
 
       try {
-        const res = await fetch(`/admin/class/${classId}/upload`, { method: 'POST', body: formData });
+        const res = await fetch(`${window.__SEC}/class/${classId}/upload`, { method: 'POST', body: formData });
         const data = await res.json();
         document.getElementById('gradingProgress').style.display = 'none';
 
@@ -401,7 +401,7 @@ function initAdminClassPage() {
   if (btnSaveNotes) {
     btnSaveNotes.addEventListener('click', async () => {
       const notes = document.getElementById('classNotes').value;
-      const res = await fetch(`/admin/class/${classId}/notes`, {
+      const res = await fetch(`${window.__SEC}/class/${classId}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notes })
@@ -434,7 +434,7 @@ function initAdminClassPage() {
         });
       });
 
-      const res = await fetch(`/admin/class/${classId}/scores`, {
+      const res = await fetch(`${window.__SEC}/class/${classId}/scores`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scores })
@@ -458,11 +458,11 @@ async function loadStudentsForEnroll(classId) {
   if (!select) return;
 
   try {
-    const res = await fetch('/admin/students');
+    const res = await fetch(window.__SEC + '/students');
     const students = await res.json();
 
     // Get currently enrolled
-    const enrolledRes = await fetch(`/admin/class/${classId}/students`);
+    const enrolledRes = await fetch(`${window.__SEC}/class/${classId}/students`);
     const enrolled = await enrolledRes.json();
     const enrolledIds = new Set(enrolled.filter(e => e.status === 'active').map(e => e.id));
 
@@ -491,7 +491,7 @@ function initAdminStudentPage() {
       const content = document.getElementById('feedbackContent').value.trim();
       if (!content) return alert('피드백 내용을 입력해주세요.');
 
-      const res = await fetch(`/admin/student/${studentId}/feedback`, {
+      const res = await fetch(`${window.__SEC}/student/${studentId}/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content })
@@ -506,7 +506,7 @@ function initAdminStudentPage() {
   document.querySelectorAll('.btn-delete-feedback').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('피드백을 삭제하시겠습니까?')) return;
-      const res = await fetch(`/admin/feedback/${btn.dataset.id}/delete`, { method: 'POST' });
+      const res = await fetch(`${window.__SEC}/feedback/${btn.dataset.id}/delete`, { method: 'POST' });
       const data = await res.json();
       if (data.success) location.reload();
       else alert(data.error || '삭제 실패');
@@ -520,7 +520,7 @@ function initAdminStudentPage() {
       const content = document.getElementById('consultationContent').value.trim();
       if (!content) return alert('상담기록 내용을 입력해주세요.');
 
-      const res = await fetch(`/admin/student/${studentId}/consultation`, {
+      const res = await fetch(`${window.__SEC}/student/${studentId}/consultation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content })
@@ -535,7 +535,7 @@ function initAdminStudentPage() {
   document.querySelectorAll('.btn-delete-consultation').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('상담기록을 삭제하시겠습니까?')) return;
-      const res = await fetch(`/admin/consultation/${btn.dataset.id}/delete`, { method: 'POST' });
+      const res = await fetch(`${window.__SEC}/consultation/${btn.dataset.id}/delete`, { method: 'POST' });
       const data = await res.json();
       if (data.success) location.reload();
       else alert(data.error || '삭제 실패');
@@ -561,7 +561,7 @@ function initStudentClassPage() {
       document.getElementById('hwResults').innerHTML = '';
 
       try {
-        const res = await fetch(`/student/class/${classId}/upload`, { method: 'POST', body: formData });
+        const res = await fetch(`${window.__BASE}/student/class/${classId}/upload`, { method: 'POST', body: formData });
         const data = await res.json();
         document.getElementById('hwProgress').style.display = 'none';
 
@@ -591,7 +591,7 @@ function initClassCalendar(classId, readOnly) {
   let editingId = null;
 
   const isStudent = !!document.getElementById('studentClassPage');
-  const apiBase = isStudent ? `/student/class/${classId}` : `/admin/class/${classId}`;
+  const apiBase = isStudent ? `${window.__BASE}/student/class/${classId}` : `${window.__SEC}/class/${classId}`;
 
   const grid = document.getElementById('calendarGrid');
   const titleEl = document.getElementById('calTitle');
@@ -673,7 +673,7 @@ function initClassCalendar(classId, readOnly) {
 
       if (editingId) {
         let payload = { start_time: startTime, end_time: endTime, description };
-        let res = await fetch(`/admin/class/${classId}/schedules/${editingId}/edit`, {
+        let res = await fetch(`${window.__SEC}/class/${classId}/schedules/${editingId}/edit`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
         });
         let data = await res.json();
@@ -681,7 +681,7 @@ function initClassCalendar(classId, readOnly) {
           const msg = '⚠️ 같은 강사의 수업 시간이 겹칩니다!\n\n' + data.conflicts.join('\n') + '\n\n그래도 진행하시겠습니까?';
           if (!confirm(msg)) return;
           payload.force_overlap = true;
-          res = await fetch(`/admin/class/${classId}/schedules/${editingId}/edit`, {
+          res = await fetch(`${window.__SEC}/class/${classId}/schedules/${editingId}/edit`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
           });
           data = await res.json();
@@ -690,7 +690,7 @@ function initClassCalendar(classId, readOnly) {
       } else {
         const repeatWeeks = parseInt(repeatInput.value, 10) || 0;
         let payload = { schedule_date: date, start_time: startTime, end_time: endTime, description, repeat_weeks: repeatWeeks };
-        let res = await fetch(`/admin/class/${classId}/schedules`, {
+        let res = await fetch(`${window.__SEC}/class/${classId}/schedules`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
         });
         let data = await res.json();
@@ -698,7 +698,7 @@ function initClassCalendar(classId, readOnly) {
           const msg = '⚠️ 같은 강사의 수업 시간이 겹칩니다!\n\n' + data.conflicts.join('\n') + '\n\n그래도 진행하시겠습니까?';
           if (!confirm(msg)) return;
           payload.force_overlap = true;
-          res = await fetch(`/admin/class/${classId}/schedules`, {
+          res = await fetch(`${window.__SEC}/class/${classId}/schedules`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
           });
           data = await res.json();
@@ -715,7 +715,7 @@ function initClassCalendar(classId, readOnly) {
     btnDelete.addEventListener('click', async () => {
       if (!editingId) return;
       if (!confirm('이 일정을 삭제하시겠습니까?')) return;
-      const res = await fetch(`/admin/class/${classId}/schedules/${editingId}/delete`, { method: 'POST' });
+      const res = await fetch(`${window.__SEC}/class/${classId}/schedules/${editingId}/delete`, { method: 'POST' });
       const data = await res.json();
       if (!data.success) return alert(data.error || '삭제 실패');
       closeModal();
@@ -1033,7 +1033,7 @@ function initDashboardSchedules() {
     updateNavTitle();
     const range = getDateRange();
     try {
-      const res = await fetch(`/admin/dashboard-schedules?start=${range.start}&end=${range.end}`);
+      const res = await fetch(`${window.__SEC}/dashboard-schedules?start=${range.start}&end=${range.end}`);
       const data = await res.json();
       schedules = data.schedules || [];
     } catch (e) {
@@ -1132,7 +1132,7 @@ function initDashboardSchedules() {
         tag.appendChild(ts);
       }
       tag.appendChild(document.createTextNode(s.class_name || ''));
-      tag.addEventListener('click', () => { location.href = '/admin/class/' + s.class_id; });
+      tag.addEventListener('click', () => { location.href = window.__SEC + '/class/' + s.class_id; });
       schedContainer.appendChild(tag);
     });
 
@@ -1252,7 +1252,7 @@ function initDashboardSchedules() {
         block.style.top = topPx + 'px';
         block.style.height = Math.max(heightPx, 20) + 'px';
         block.style.cursor = 'pointer';
-        block.addEventListener('click', () => { location.href = '/admin/class/' + s.class_id; });
+        block.addEventListener('click', () => { location.href = window.__SEC + '/class/' + s.class_id; });
 
         const name = document.createElement('div');
         name.className = 'tt-block-name';
@@ -1347,7 +1347,7 @@ function initDashboardSchedules() {
       }
 
       item.style.cursor = 'pointer';
-      item.addEventListener('click', () => { location.href = '/admin/class/' + s.class_id; });
+      item.addEventListener('click', () => { location.href = window.__SEC + '/class/' + s.class_id; });
 
       list.appendChild(item);
     });
@@ -1378,7 +1378,7 @@ function initScheduleListPage() {
       const title = btn.dataset.title || '이 시간표';
       if (!confirm(`"${title}"을(를) 정말 삭제하시겠습니까?`)) return;
       try {
-        const res = await fetch(`/admin/schedule-pages/${id}/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        const res = await fetch(`${window.__SEC}/schedule-pages/${id}/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
         const data = await res.json();
         if (data.success) location.reload();
         else alert(data.error || '삭제 실패');
@@ -2049,7 +2049,7 @@ function initScheduleEditorPage() {
   async function doSave() {
     collectState();
     const saveMsg = document.getElementById('seSaveMsg');
-    const url = isEdit ? `/admin/schedule-pages/${pageId}` : '/admin/schedule-pages';
+    const url = isEdit ? `${window.__SEC}/schedule-pages/${pageId}` : `${window.__SEC}/schedule-pages`;
 
     try {
       const res = await fetch(url, {
@@ -2064,7 +2064,7 @@ function initScheduleEditorPage() {
         saveMsg.style.display = 'block';
         setTimeout(() => { saveMsg.style.display = 'none'; }, 2000);
         if (!isEdit && data.id) {
-          window.location.href = `/admin/schedule-pages/${data.id}/edit`;
+          window.location.href = `${window.__SEC}/schedule-pages/${data.id}/edit`;
         }
         return true;
       } else {
@@ -2108,7 +2108,7 @@ function initScheduleEditorPage() {
       return;
     }
     try {
-      const res = await fetch(`/admin/schedule-pages/${pageId}/data`);
+      const res = await fetch(`${window.__SEC}/schedule-pages/${pageId}/data`);
       const data = await res.json();
       if (data.error) { alert(data.error); return; }
       state.title = data.title || '';
@@ -2188,7 +2188,7 @@ function initScheduleEditorPage() {
     formData.append('image', file);
 
     try {
-      const res = await fetch(`/admin/schedule-pages/${pageId}/profile-image`, {
+      const res = await fetch(`${window.__SEC}/schedule-pages/${pageId}/profile-image`, {
         method: 'POST',
         body: formData
       });
@@ -2209,7 +2209,7 @@ function initScheduleEditorPage() {
     if (!isEdit) return;
     if (!confirm('프로필 이미지를 삭제하시겠습니까?')) return;
     try {
-      const res = await fetch(`/admin/schedule-pages/${pageId}/profile-image/delete`, {
+      const res = await fetch(`${window.__SEC}/schedule-pages/${pageId}/profile-image/delete`, {
         method: 'POST'
       });
       const data = await res.json();

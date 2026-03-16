@@ -71,24 +71,47 @@ const authRoutes = require('./routes/auth');
 const studentRoutes = require('./routes/student');
 const adminRoutes = require('./routes/admin');
 
-app.use('/auth', authRoutes);
-app.use('/student', studentRoutes);
-app.use('/admin', adminRoutes);
+// /management 하위 라우터
+const mgmt = express.Router();
 
-// 메인 페이지 → 로그인
-app.get('/', (req, res) => {
+// basePath + role 기반 sectionPath 설정
+mgmt.use((req, res, next) => {
+  res.locals.basePath = '/management';
   if (req.session.user) {
-    if (req.session.user.role === 'admin' || req.session.user.role === 'subadmin' || req.session.user.role === 'teacher') {
-      return res.redirect('/admin');
-    }
-    return res.redirect('/student');
+    const role = req.session.user.role;
+    res.locals.sectionPath = (role === 'admin' || role === 'subadmin')
+      ? '/management/admin' : role === 'teacher'
+      ? '/management/teacher' : '/management/student';
+  }
+  next();
+});
+
+// 로그인 페이지
+mgmt.get('/', (req, res) => {
+  if (req.session.user) {
+    const role = req.session.user.role;
+    if (role === 'admin' || role === 'subadmin') return res.redirect('/management/admin');
+    if (role === 'teacher') return res.redirect('/management/teacher');
+    return res.redirect('/management/student');
   }
   res.render('login', { error: null });
 });
 
 // 회원가입 페이지
-app.get('/register', (req, res) => {
+mgmt.get('/register', (req, res) => {
   res.render('register', { error: null });
+});
+
+mgmt.use('/auth', authRoutes);
+mgmt.use('/admin', adminRoutes);
+mgmt.use('/teacher', adminRoutes);
+mgmt.use('/student', studentRoutes);
+
+app.use('/management', mgmt);
+
+// 루트: 향후 랜딩페이지용 (현재는 /management로 리다이렉트)
+app.get('/', (req, res) => {
+  res.redirect('/management');
 });
 
 // Public profile image serving (no auth)

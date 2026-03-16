@@ -16,7 +16,7 @@ function isAdminLike(role) {
 // 관리자/부원장/강사 인증 미들웨어
 function requireAdmin(req, res, next) {
   if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'subadmin' && req.session.user.role !== 'teacher')) {
-    return res.redirect('/');
+    return res.redirect('/management');
   }
   next();
 }
@@ -50,6 +50,21 @@ const upload = multer({
       cb(new Error('PDF, JPG, PNG 파일만 업로드 가능합니다.'));
     }
   }
+});
+
+// Role ↔ path validation: redirect to correct section
+router.use((req, res, next) => {
+  const user = req.session.user;
+  if (!user) return res.redirect('/management');
+  const isOnAdminPath = req.baseUrl.includes('/admin');
+  const isOnTeacherPath = req.baseUrl.includes('/teacher');
+  if (isOnAdminPath && user.role === 'teacher') {
+    return res.redirect(req.originalUrl.replace('/admin', '/teacher'));
+  }
+  if (isOnTeacherPath && (user.role === 'admin' || user.role === 'subadmin')) {
+    return res.redirect(req.originalUrl.replace('/teacher', '/admin'));
+  }
+  next();
 });
 
 // Sidebar data for all admin views
@@ -381,7 +396,7 @@ router.get('/profile', requireAdmin, async (req, res) => {
     const userId = req.session.user.id;
     const userRole = req.session.user.role;
     const rows = await sql`SELECT id, username, name, role FROM users WHERE id = ${userId}`;
-    if (rows.length === 0) return res.redirect('/');
+    if (rows.length === 0) return res.redirect('/management');
     res.render('admin-profile', { profile: rows[0], userRole, user: req.session.user, message: null, error: null });
   } catch (err) {
     console.error('Profile page error:', err);
@@ -400,7 +415,7 @@ router.post('/profile', requireAdmin, async (req, res) => {
     const newPassword = req.body.new_password || '';
 
     const rows = await sql`SELECT * FROM users WHERE id = ${userId}`;
-    if (rows.length === 0) return res.redirect('/');
+    if (rows.length === 0) return res.redirect('/management');
     const currentUser = rows[0];
 
     // Validate
@@ -446,7 +461,7 @@ router.post('/profile', requireAdmin, async (req, res) => {
 
 router.get('/:username/students-list', requireAdmin, async (req, res) => {
   if (req.params.username !== req.session.user.username) {
-    return res.redirect(`/admin/${req.session.user.username}/students-list`);
+    return res.redirect(`${req.baseUrl}/${req.session.user.username}/students-list`);
   }
   try {
     const userRole = req.session.user.role;
@@ -1230,7 +1245,7 @@ router.get('/schedule-pages', requireAdmin, async (req, res) => {
   try {
     const userId = req.session.user.id;
     const userRole = req.session.user.role;
-    const maxSlots = isAdminLike(userRole) ? 10 : 5;
+    const maxSlots = isAdminLike(userRole) ? 30 : 5;
 
     let myPages = [];
     let teacherPages = [];
@@ -1258,11 +1273,11 @@ router.get('/schedule-pages/new', requireAdmin, async (req, res) => {
   try {
     const userId = req.session.user.id;
     const userRole = req.session.user.role;
-    const maxSlots = isAdminLike(userRole) ? 10 : 5;
+    const maxSlots = isAdminLike(userRole) ? 30 : 5;
 
     const countRows = await sql`SELECT COUNT(*) as cnt FROM schedule_pages WHERE owner_id = ${userId}`;
     if (parseInt(countRows[0].cnt, 10) >= maxSlots) {
-      return res.redirect('/admin/schedule-pages');
+      return res.redirect(req.baseUrl + '/schedule-pages');
     }
 
     res.render('admin-schedule-editor', {
@@ -1281,11 +1296,11 @@ router.get('/schedule-pages/:id/edit', requireAdmin, async (req, res) => {
     const pageId = req.params.id;
 
     const rows = await sql`SELECT * FROM schedule_pages WHERE id = ${pageId}`;
-    if (rows.length === 0) return res.redirect('/admin/schedule-pages');
+    if (rows.length === 0) return res.redirect(req.baseUrl + '/schedule-pages');
     const page = rows[0];
 
     if (!isAdminLike(userRole) && page.owner_id !== userId) {
-      return res.redirect('/admin/schedule-pages');
+      return res.redirect(req.baseUrl + '/schedule-pages');
     }
 
     res.render('admin-schedule-editor', {
@@ -1334,7 +1349,7 @@ router.post('/schedule-pages', requireAdmin, async (req, res) => {
   try {
     const userId = req.session.user.id;
     const userRole = req.session.user.role;
-    const maxSlots = isAdminLike(userRole) ? 10 : 5;
+    const maxSlots = isAdminLike(userRole) ? 30 : 5;
     let { title, slug, status, header_data, schedule_data, syllabus_data, theme_data } = req.body;
 
     if (!isAdminLike(userRole) && (status === 'published' || status === 'private')) {
@@ -1422,7 +1437,15 @@ router.post('/schedule-pages/:id/delete', requireAdmin, async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
+    const ownerId = page.owner_id;
     await sql`DELETE FROM schedule_pages WHERE id = ${pageId}`;
+
+    // Reorder remaining slots: renumber by slot_number order starting from 1
+    const remaining = await sql`SELECT id FROM schedule_pages WHERE owner_id = ${ownerId} ORDER BY slot_number ASC`;
+    for (let i = 0; i < remaining.length; i++) {
+      await sql`UPDATE schedule_pages SET slot_number = ${i + 1} WHERE id = ${remaining[i].id}`;
+    }
+
     res.json({ success: true });
   } catch (err) {
     console.error('Delete schedule page error:', err);

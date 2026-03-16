@@ -48,7 +48,7 @@
                       <td><%= s.gender || '-' %></td>
                       <td><%= s.grade || '-' %></td>
                       <td><%= s.school || '-' %></td>
-                      <td><a href="/admin/student/<%= s.id %>" class="btn btn-sm btn-outline">관리</a></td>
+                      <td><a href="<%= sectionPath %>/student/<%= s.id %>" class="btn btn-sm btn-outline">관리</a></td>
                     </tr>
                   <% }) %>
                 </tbody>
@@ -73,6 +73,7 @@
       });
     }
   </script>
+  <script>window.__SEC='<%= sectionPath %>';window.__BASE='<%= basePath %>'</script>
   <script src="/js/app.js"></script>
 </body>
 </html>

@@ -9,10 +9,10 @@
 <body>
   <% if (user) { %>
   <nav class="navbar">
-    <a href="/" class="nav-brand"><img src="/images/logo-horizontal.png" alt="Kevin Academy"></a>
+    <a href="/management" class="nav-brand"><img src="/images/logo-horizontal.png" alt="Kevin Academy"></a>
     <div class="nav-info">
       <span class="nav-user"><%= user.name %> (<%= user.student_id %>)</span>
-      <a href="/auth/logout" class="btn btn-sm btn-outline">로그아웃</a>
+      <a href="/management/auth/logout" class="btn btn-sm btn-outline">로그아웃</a>
     </div>
   </nav>
   <% } %>

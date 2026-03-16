@@ -1,7 +1,7 @@
 <!-- Admin/Teacher Sidebar -->
 <aside class="student-sidebar" id="adminSidebar">
   <div class="sidebar-header">
-    <a href="/admin" class="sidebar-logo">
+    <a href="<%= sectionPath %>" class="sidebar-logo">
       <img src="/images/logo-horizontal-inverted.png" alt="Kevin Academy">
     </a>
     <button class="sidebar-close" id="sidebarClose">&times;</button>
@@ -9,7 +9,7 @@
 
   <nav class="sidebar-nav">
     <div class="sidebar-section">
-      <a href="/admin" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'dashboard' ? 'active' : '' %>">
+      <a href="<%= sectionPath %>" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'dashboard' ? 'active' : '' %>">
         <span class="sidebar-icon">&#128200;</span>
         <span>대시보드</span>
       </a>
@@ -30,7 +30,7 @@
         <% } else { %>
           <% activeClasses.forEach(cls => { %>
             <li>
-              <a href="/admin/class/<%= cls.id %>" class="sidebar-submenu-item <%= typeof activeClassId !== 'undefined' && activeClassId == cls.id ? 'active' : '' %>">
+              <a href="<%= sectionPath %>/class/<%= cls.id %>" class="sidebar-submenu-item <%= typeof activeClassId !== 'undefined' && activeClassId == cls.id ? 'active' : '' %>">
                 <%= cls.name %>
               </a>
             </li>
@@ -49,7 +49,7 @@
       <ul class="sidebar-submenu" id="inactiveClassesSubmenu">
         <% inactiveClasses.forEach(cls => { %>
           <li>
-            <a href="/admin/class/<%= cls.id %>" class="sidebar-submenu-item class-inactive <%= typeof activeClassId !== 'undefined' && activeClassId == cls.id ? 'active' : '' %>">
+            <a href="<%= sectionPath %>/class/<%= cls.id %>" class="sidebar-submenu-item class-inactive <%= typeof activeClassId !== 'undefined' && activeClassId == cls.id ? 'active' : '' %>">
               <%= cls.name %>
             </a>
           </li>
@@ -59,7 +59,7 @@
     <% } %>
 
     <div class="sidebar-section">
-      <a href="/admin/<%= user.username %>/students-list" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'students-list' ? 'active' : '' %>">
+      <a href="<%= sectionPath %>/<%= user.username %>/students-list" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'students-list' ? 'active' : '' %>">
         <span class="sidebar-icon">&#128101;</span>
         <span>학생 목록</span>
       </a>
@@ -67,7 +67,7 @@
 
     <% if (user.role === 'admin' || user.role === 'subadmin') { %>
     <div class="sidebar-section">
-      <a href="/admin/teachers" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'teachers' ? 'active' : '' %>">
+      <a href="<%= sectionPath %>/teachers" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'teachers' ? 'active' : '' %>">
         <span class="sidebar-icon">&#128100;</span>
         <span>강사 관리</span>
       </a>
@@ -75,35 +75,35 @@
     <% } %>
 
     <div class="sidebar-section">
-      <a href="/admin/submissions" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'submissions' ? 'active' : '' %>">
+      <a href="<%= sectionPath %>/submissions" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'submissions' ? 'active' : '' %>">
         <span class="sidebar-icon">&#128196;</span>
         <span>최근 과제 제출</span>
       </a>
     </div>
 
     <div class="sidebar-section">
-      <a href="/admin/graded" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'graded' ? 'active' : '' %>">
+      <a href="<%= sectionPath %>/graded" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'graded' ? 'active' : '' %>">
         <span class="sidebar-icon">&#9989;</span>
         <span>최근 채점 업로드</span>
       </a>
     </div>
 
     <div class="sidebar-section">
-      <a href="/admin/stats" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'stats' ? 'active' : '' %>">
+      <a href="<%= sectionPath %>/stats" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'stats' ? 'active' : '' %>">
         <span class="sidebar-icon">&#128202;</span>
         <span>통계</span>
       </a>
     </div>
 
     <div class="sidebar-section">
-      <a href="/admin/schedule-pages" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'schedule-pages' ? 'active' : '' %>">
+      <a href="<%= sectionPath %>/schedule-pages" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'schedule-pages' ? 'active' : '' %>">
         <span class="sidebar-icon">&#128337;</span>
         <span>시간표 만들기</span>
       </a>
     </div>
 
     <div class="sidebar-section">
-      <a href="/admin/files" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'files' ? 'active' : '' %>">
+      <a href="<%= sectionPath %>/files" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'files' ? 'active' : '' %>">
         <span class="sidebar-icon">&#128193;</span>
         <span>파일 관리</span>
       </a>
@@ -138,8 +138,8 @@
         <div class="sidebar-user-name"><%= user.name %></div>
         <div class="sidebar-user-role"><%= user.role === 'admin' ? '원장' : user.role === 'subadmin' ? '부원장' : '강사' %></div>
       </div>
-      <a href="/admin/profile" title="프로필 편집" style="margin-left:auto;color:var(--gray-400);font-size:1.1rem;padding:0.25rem;text-decoration:none;display:flex;align-items:center;">&#9998;</a>
+      <a href="<%= sectionPath %>/profile" title="프로필 편집" style="margin-left:auto;color:var(--gray-400);font-size:1.1rem;padding:0.25rem;text-decoration:none;display:flex;align-items:center;">&#9998;</a>
     </div>
-    <a href="/auth/logout" class="sidebar-logout" title="로그아웃">&#9109; 로그아웃</a>
+    <a href="<%= basePath %>/auth/logout" class="sidebar-logout" title="로그아웃">&#9109; 로그아웃</a>
   </div>
 </aside>

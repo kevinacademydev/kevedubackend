@@ -297,7 +297,7 @@
           <div class="login-alert error"><%= error %></div>
         <% } %>
 
-        <form action="/auth/login" method="POST" class="login-form">
+        <form action="/management/auth/login" method="POST" class="login-form">
           <div class="login-field">
             <label for="username">아이디</label>
             <input type="text" id="username" name="username" placeholder="아이디를 입력하세요" required>
@@ -311,14 +311,14 @@
           <button type="submit" class="login-btn">로그인</button>
 
           <div style="text-align: right; margin-top: 0.5rem;">
-            <a href="/auth/forgot-password" style="font-size: 0.8rem; color: #888; text-decoration: none;">비밀번호를 잊으셨나요?</a>
+            <a href="/management/auth/forgot-password" style="font-size: 0.8rem; color: #888; text-decoration: none;">비밀번호를 잊으셨나요?</a>
           </div>
         </form>
 
         <div class="login-divider"><span>or</span></div>
 
         <div class="login-register-link">
-          <a href="/register">회원가입</a>
+          <a href="/management/register">회원가입</a>
         </div>
       </div>
     </div>
