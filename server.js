@@ -109,10 +109,7 @@ mgmt.use('/student', studentRoutes);
 
 app.use('/management', mgmt);
 
-// 루트: 향후 랜딩페이지용 (현재는 /management로 리다이렉트)
-app.get('/', (req, res) => {
-  res.redirect('/management');
-});
+// 루트: 향후 랜딩페이지용 (리다이렉트 없음)
 
 // Public profile image serving (no auth)
 app.get('/schedule-profile-image/:filePath(*)', async (req, res) => {
