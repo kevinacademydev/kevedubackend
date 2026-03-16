@@ -48,10 +48,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const langToggle = document.getElementById('spLangToggle');
         if (exportBar) exportBar.style.display = 'none';
         if (langToggle) langToggle.style.display = 'none';
+        window.scrollTo(0, 0);
         const canvas = await html2canvas(document.body, {
           scale: 2,
           useCORS: true,
           logging: false,
+          scrollX: 0,
+          scrollY: 0,
           windowWidth: document.body.scrollWidth,
           windowHeight: document.body.scrollHeight
         });
@@ -81,10 +84,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const langToggle = document.getElementById('spLangToggle');
         if (exportBar) exportBar.style.display = 'none';
         if (langToggle) langToggle.style.display = 'none';
+        window.scrollTo(0, 0);
         const canvas = await html2canvas(document.body, {
           scale: 2,
           useCORS: true,
           logging: false,
+          scrollX: 0,
+          scrollY: 0,
           windowWidth: document.body.scrollWidth,
           windowHeight: document.body.scrollHeight
         });
