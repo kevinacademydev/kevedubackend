@@ -79,12 +79,12 @@ router.use(async (req, res, next) => {
     if (userRole === 'teacher') {
       const classIds = await getTeacherClassIds(userId);
       if (classIds.length > 0) {
-        sidebarClasses = await sql`SELECT id, name, type, status FROM classes WHERE id = ANY(${classIds}) ORDER BY status ASC, name ASC`;
+        sidebarClasses = await sql`SELECT id, name, type, status FROM classes WHERE id = ANY(${classIds}) ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'upcoming' THEN 1 WHEN 'inactive' THEN 2 END, name ASC`;
       } else {
         sidebarClasses = [];
       }
     } else {
-      sidebarClasses = await sql`SELECT id, name, type, status FROM classes ORDER BY status ASC, name ASC`;
+      sidebarClasses = await sql`SELECT id, name, type, status FROM classes ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'upcoming' THEN 1 WHEN 'inactive' THEN 2 END, name ASC`;
     }
     res.locals.sidebarClasses = sidebarClasses;
     next();
@@ -112,7 +112,7 @@ router.get('/', requireAdmin, async (req, res) => {
         classes = await sql`SELECT c.*,
           (SELECT COUNT(*) FROM class_enrollments ce WHERE ce.class_id = c.id AND ce.status = 'active') as student_count,
           (SELECT STRING_AGG(u.name, ', ') FROM class_teachers ct JOIN users u ON ct.teacher_id = u.id WHERE ct.class_id = c.id) as teacher_names
-          FROM classes c WHERE c.id = ANY(${classIds}) ORDER BY c.status ASC, c.name ASC`;
+          FROM classes c WHERE c.id = ANY(${classIds}) ORDER BY CASE c.status WHEN 'active' THEN 0 WHEN 'upcoming' THEN 1 WHEN 'inactive' THEN 2 END, c.name ASC`;
 
         submissions = await sql`
           SELECT s.*, u.username, u.name as student_name, c.name as class_name
@@ -137,7 +137,7 @@ router.get('/', requireAdmin, async (req, res) => {
       classes = await sql`SELECT c.*,
         (SELECT COUNT(*) FROM class_enrollments ce WHERE ce.class_id = c.id AND ce.status = 'active') as student_count,
         (SELECT STRING_AGG(u.name, ', ') FROM class_teachers ct JOIN users u ON ct.teacher_id = u.id WHERE ct.class_id = c.id) as teacher_names
-        FROM classes c ORDER BY c.status ASC, c.name ASC`;
+        FROM classes c ORDER BY CASE c.status WHEN 'active' THEN 0 WHEN 'upcoming' THEN 1 WHEN 'inactive' THEN 2 END, c.name ASC`;
 
       submissions = await sql`
         SELECT s.*, u.username, u.name as student_name, c.name as class_name
@@ -598,7 +598,8 @@ router.post('/class/:id/edit', requireAdminLike, async (req, res) => {
     const classId = req.params.id;
     const name = (req.body.name || '').trim();
     const type = req.body.type || 'regular';
-    const status = req.body.status || 'active';
+    let status = req.body.status || 'active';
+    if (!['active', 'inactive', 'upcoming'].includes(status)) status = 'active';
 
     if (!name) return res.status(400).json({ error: '수업 이름을 입력해주세요.' });
 
@@ -1207,6 +1208,18 @@ router.post('/teachers/:id/delete', requireSuperAdmin, async (req, res) => {
 
 // ======= 대시보드 일정 API =======
 
+router.get('/dashboard-teachers', requireAdmin, async (req, res) => {
+  try {
+    const teachers = await sql`
+      SELECT u.id, u.name FROM users u
+      WHERE u.role IN ('admin','subadmin','teacher')
+      ORDER BY u.name ASC`;
+    res.json({ teachers });
+  } catch (err) {
+    res.status(500).json({ error: '서버 오류' });
+  }
+});
+
 router.get('/dashboard-schedules', requireAdmin, async (req, res) => {
   try {
     const userRole = req.session.user.role;
@@ -1214,6 +1227,7 @@ router.get('/dashboard-schedules', requireAdmin, async (req, res) => {
 
     const startDate = (req.query.start || '').trim();
     const endDate = (req.query.end || '').trim();
+    const teacherId = (req.query.teacher_id || '').trim();
 
     if (!startDate || !endDate) {
       return res.status(400).json({ error: 'start, end 파라미터가 필요합니다.' });
@@ -1226,10 +1240,28 @@ router.get('/dashboard-schedules', requireAdmin, async (req, res) => {
       schedules = await sql`SELECT cs.*, c.name as class_name FROM class_schedules cs JOIN classes c ON cs.class_id = c.id
         WHERE cs.schedule_date >= ${startDate} AND cs.schedule_date < ${endDate} AND cs.class_id = ANY(${classIds})
         ORDER BY cs.schedule_date, cs.start_time, cs.id`;
-    } else {
+    } else if (teacherId === 'all') {
       schedules = await sql`SELECT cs.*, c.name as class_name FROM class_schedules cs JOIN classes c ON cs.class_id = c.id
         WHERE cs.schedule_date >= ${startDate} AND cs.schedule_date < ${endDate}
         ORDER BY cs.schedule_date, cs.start_time, cs.id`;
+    } else if (teacherId && !isNaN(teacherId)) {
+      const tClassIds = await getTeacherClassIds(parseInt(teacherId, 10));
+      if (tClassIds.length === 0) return res.json({ schedules: [] });
+      schedules = await sql`SELECT cs.*, c.name as class_name FROM class_schedules cs JOIN classes c ON cs.class_id = c.id
+        WHERE cs.schedule_date >= ${startDate} AND cs.schedule_date < ${endDate} AND cs.class_id = ANY(${tClassIds})
+        ORDER BY cs.schedule_date, cs.start_time, cs.id`;
+    } else {
+      // Default: 본인 담당 수업 (admin은 class_teachers에 없을 수 있으므로 빈 결과시 전체 fallback)
+      const myClassIds = await getTeacherClassIds(userId);
+      if (myClassIds.length > 0) {
+        schedules = await sql`SELECT cs.*, c.name as class_name FROM class_schedules cs JOIN classes c ON cs.class_id = c.id
+          WHERE cs.schedule_date >= ${startDate} AND cs.schedule_date < ${endDate} AND cs.class_id = ANY(${myClassIds})
+          ORDER BY cs.schedule_date, cs.start_time, cs.id`;
+      } else {
+        schedules = await sql`SELECT cs.*, c.name as class_name FROM class_schedules cs JOIN classes c ON cs.class_id = c.id
+          WHERE cs.schedule_date >= ${startDate} AND cs.schedule_date < ${endDate}
+          ORDER BY cs.schedule_date, cs.start_time, cs.id`;
+      }
     }
 
     res.json({ schedules });

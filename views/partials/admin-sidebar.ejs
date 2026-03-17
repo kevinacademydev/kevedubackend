@@ -15,7 +15,8 @@
       </a>
     </div>
 
-    <% const activeClasses = sidebarClasses.filter(c => c.status !== 'inactive'); %>
+    <% const activeClasses = sidebarClasses.filter(c => c.status === 'active'); %>
+    <% const upcomingClasses = sidebarClasses.filter(c => c.status === 'upcoming'); %>
     <% const inactiveClasses = sidebarClasses.filter(c => c.status === 'inactive'); %>
 
     <div class="sidebar-section">
@@ -38,6 +39,25 @@
         <% } %>
       </ul>
     </div>
+
+    <% if (upcomingClasses.length > 0) { %>
+    <div class="sidebar-section">
+      <button class="sidebar-nav-item sidebar-toggle" data-target="upcomingClassesSubmenu">
+        <span class="sidebar-icon">&#128197;</span>
+        <span>예정된 수업</span>
+        <span class="sidebar-arrow">&#9660;</span>
+      </button>
+      <ul class="sidebar-submenu" id="upcomingClassesSubmenu">
+        <% upcomingClasses.forEach(cls => { %>
+          <li>
+            <a href="<%= sectionPath %>/class/<%= cls.id %>" class="sidebar-submenu-item class-upcoming <%= typeof activeClassId !== 'undefined' && activeClassId == cls.id ? 'active' : '' %>">
+              <%= cls.name %>
+            </a>
+          </li>
+        <% }) %>
+      </ul>
+    </div>
+    <% } %>
 
     <% if (inactiveClasses.length > 0) { %>
     <div class="sidebar-section">

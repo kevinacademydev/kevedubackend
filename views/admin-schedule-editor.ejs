@@ -33,12 +33,6 @@
         <!-- Owner info (admin editing teacher's page) -->
         <div id="seOwnerInfo" class="se-owner-info" style="display:none;"></div>
 
-        <!-- Language Toggle -->
-        <div class="se-lang-toggle">
-          <button class="se-lang-btn active" data-lang="ko">KOR</button>
-          <button class="se-lang-btn" data-lang="en">ENG</button>
-        </div>
-
         <!-- 1. Settings -->
         <div class="se-section">
           <button class="se-section-toggle active" data-target="seSettings">
@@ -131,7 +125,13 @@
             <span class="se-arrow">&#9660;</span>
           </button>
           <div class="se-section-body" id="seSyllabus">
-            <div id="seSyllabusTabBar" class="se-syllabus-tabs"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+              <div id="seSyllabusTabBar" class="se-syllabus-tabs" style="margin-bottom:0;"></div>
+              <div class="se-lang-toggle" style="position:static;flex-shrink:0;">
+                <button class="se-lang-btn active" data-lang="ko">KOR</button>
+                <button class="se-lang-btn" data-lang="en">ENG</button>
+              </div>
+            </div>
             <button class="btn btn-sm btn-outline" id="seAddSubject" style="margin-bottom:1rem;">+ 과목 추가</button>
             <div id="seSyllabusPanel"></div>
           </div>

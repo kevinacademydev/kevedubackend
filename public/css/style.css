@@ -830,6 +830,16 @@ body {
   opacity: 0.6;
 }
 
+/* === Upcoming class === */
+.class-upcoming {
+  opacity: 0.8;
+}
+
+.badge-upcoming {
+  background: #f59e0b;
+  color: white;
+}
+
 /* === Calendar === */
 .calendar-nav {
   display: flex;

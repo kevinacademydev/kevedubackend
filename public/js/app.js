@@ -1977,7 +1977,11 @@ function initScheduleEditorPage() {
     });
     html += `</div><button class="btn btn-sm btn-outline se-add-wp">+ 회차 추가</button></div>
 
-      <div><button class="btn btn-sm btn-danger se-remove-subj">이 과목 삭제</button></div>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-sm btn-outline se-move-subj-left" ${activeSyllabusIdx === 0 ? 'disabled' : ''}>&larr; 앞으로</button>
+        <button class="btn btn-sm btn-outline se-move-subj-right" ${activeSyllabusIdx >= subjs.length - 1 ? 'disabled' : ''}>뒤로 &rarr;</button>
+        <button class="btn btn-sm btn-danger se-remove-subj" style="margin-left:auto;">이 과목 삭제</button>
+      </div>
     </div>`;
 
     panel.innerHTML = html;
@@ -2025,6 +2029,28 @@ function initScheduleEditorPage() {
       collectSyllabusState();
       state.syllabus_data.subjects.splice(activeSyllabusIdx, 1);
       activeSyllabusIdx = Math.max(0, activeSyllabusIdx - 1);
+      renderSyllabusTabs();
+      renderSyllabusPanel();
+      markDirty();
+    });
+
+    panel.querySelector('.se-move-subj-left')?.addEventListener('click', () => {
+      if (activeSyllabusIdx <= 0) return;
+      collectSyllabusState();
+      const subjs = state.syllabus_data.subjects;
+      [subjs[activeSyllabusIdx - 1], subjs[activeSyllabusIdx]] = [subjs[activeSyllabusIdx], subjs[activeSyllabusIdx - 1]];
+      activeSyllabusIdx--;
+      renderSyllabusTabs();
+      renderSyllabusPanel();
+      markDirty();
+    });
+
+    panel.querySelector('.se-move-subj-right')?.addEventListener('click', () => {
+      const subjs = state.syllabus_data.subjects;
+      if (activeSyllabusIdx >= subjs.length - 1) return;
+      collectSyllabusState();
+      [subjs[activeSyllabusIdx], subjs[activeSyllabusIdx + 1]] = [subjs[activeSyllabusIdx + 1], subjs[activeSyllabusIdx]];
+      activeSyllabusIdx++;
       renderSyllabusTabs();
       renderSyllabusPanel();
       markDirty();

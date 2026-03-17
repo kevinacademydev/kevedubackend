@@ -109,7 +109,16 @@ mgmt.use('/student', studentRoutes);
 
 app.use('/management', mgmt);
 
-// 루트: 향후 랜딩페이지용 (리다이렉트 없음)
+// 루트: 랜딩 페이지 (로그인 여부 무관, 항상 홍보 페이지 표시)
+app.get('/', async (req, res) => {
+  try {
+    const schedules = await sql`SELECT title, slug, header_data, theme_data FROM schedule_pages WHERE status = 'published' ORDER BY updated_at DESC`;
+    res.render('landing', { schedules });
+  } catch (err) {
+    console.error('Landing page error:', err);
+    res.render('landing', { schedules: [] });
+  }
+});
 
 // Public profile image serving (no auth)
 app.get('/schedule-profile-image/:filePath(*)', async (req, res) => {

@@ -25,6 +25,12 @@
         <div class="card" style="margin-bottom:1.5rem;" id="dashboardScheduleCard">
           <div class="card-header">
             <h3>수업 일정</h3>
+            <% if (userRole === 'admin' || userRole === 'subadmin') { %>
+              <select id="dashTeacherFilter" class="form-select-sm" style="font-size:0.8rem;padding:0.25rem 0.5rem;border:1px solid var(--gray-300);border-radius:var(--radius);background:white;">
+                <option value="">내 수업</option>
+                <option value="all">전체</option>
+              </select>
+            <% } %>
             <div class="schedule-tab-nav">
               <button class="btn btn-sm btn-primary schedule-tab active" data-tab="day">일별</button>
               <button class="btn btn-sm btn-outline schedule-tab" data-tab="week">주별</button>
@@ -72,10 +78,11 @@
                 <% } else { %>
                   <div class="class-list">
                     <% classes.forEach(cls => { %>
-                      <a href="<%= sectionPath %>/class/<%= cls.id %>" class="class-card <%= cls.status === 'inactive' ? 'class-inactive' : '' %>">
+                      <a href="<%= sectionPath %>/class/<%= cls.id %>" class="class-card <%= cls.status === 'inactive' ? 'class-inactive' : '' %> <%= cls.status === 'upcoming' ? 'class-upcoming' : '' %>">
                         <div class="class-card-info">
                           <strong><%= cls.name %></strong>
                           <span class="badge"><%= cls.type === 'regular' ? '정규' : cls.type === 'team' ? '그룹' : '개인' %></span>
+                          <% if (cls.status === 'upcoming') { %><span class="badge badge-upcoming">예정</span><% } %>
                           <% if (cls.status === 'inactive') { %><span class="badge">비활성</span><% } %>
                         </div>
                         <div class="class-card-meta">

@@ -16,59 +16,43 @@
   // Fixed Kevin Academy theme colors
   theme.heroBg = '#133327';
   theme.accent = '#ffffff';
-  // Accent substitute for use on light backgrounds (white accent invisible on white bg)
   const accentOnLight = '#133327';
 %>
 
 <%
-  // Bilingual helper: handles both old string format and new {ko, en} format
+  // Bilingual helper
   function t(field, lang) {
     if (typeof field === 'object' && field !== null) return field[lang] || field.ko || '';
     return field || '';
   }
-  // Day name lookup for English
-  const dayMap = { '월': 'Mon', '화': 'Tue', '수': 'Wed', '목': 'Thu', '금': 'Fri', '토': 'Sat', '일': 'Sun' };
 %>
 
-<!-- Language Toggle -->
-<div class="sp-lang-toggle" id="spLangToggle">
-  <button class="sp-lang-btn active" data-lang="ko">KOR</button>
-  <button class="sp-lang-btn" data-lang="en">ENG</button>
-</div>
+<!-- Top Nav Bar -->
+<nav class="sp-topnav">
+  <a href="/" class="sp-topnav-logo">
+    <img src="/images/logo-horizontal-inverted.png" alt="Kevin Academy">
+  </a>
+  <a href="/" class="sp-topnav-back">&#8592; 뒤로 가기</a>
+</nav>
 
 <!-- Hero Section -->
-<section class="sp-hero" style="background: linear-gradient(135deg, <%= theme.heroBg || '#1a1a2e' %> 0%, <%= theme.heroBg || '#1a1a2e' %>cc 100%);">
+<section class="sp-hero" style="background: <%= theme.heroBg || '#133327' %>;">
   <div class="sp-hero-inner">
-    <div class="sp-hero-badge">Kevin Academy</div>
-    <h1 class="sp-hero-title">
-      <span data-lang="ko"><%= t(hd.programTitle, 'ko') || page.title %></span>
-      <span data-lang="en" style="display:none;"><%= t(hd.programTitle, 'en') || page.title %></span>
-    </h1>
-    <% if (t(hd.subtitle, 'ko') || t(hd.subtitle, 'en')) { %>
-      <p class="sp-hero-subtitle">
-        <span data-lang="ko"><%= t(hd.subtitle, 'ko') %></span>
-        <span data-lang="en" style="display:none;"><%= t(hd.subtitle, 'en') %></span>
-      </p>
+    <div class="sp-hero-badge"><img src="/images/logo-inverted.png" alt="Kevin Academy" style="height:200px;vertical-align:middle;"></div>
+    <h1 class="sp-hero-title"><%= t(hd.programTitle, 'ko') || page.title %></h1>
+    <% if (t(hd.subtitle, 'ko')) { %>
+      <p class="sp-hero-subtitle"><%= t(hd.subtitle, 'ko') %></p>
     <% } %>
-    <% if (t(hd.description, 'ko') || t(hd.description, 'en')) { %>
-      <p class="sp-hero-desc">
-        <span data-lang="ko"><%= t(hd.description, 'ko') %></span>
-        <span data-lang="en" style="display:none;"><%= t(hd.description, 'en') %></span>
-      </p>
+    <% if (t(hd.description, 'ko')) { %>
+      <p class="sp-hero-desc"><%= t(hd.description, 'ko') %></p>
     <% } %>
 
     <% if (hd.cards && hd.cards.length > 0) { %>
       <div class="sp-hero-cards">
         <% hd.cards.forEach(card => { %>
           <div class="sp-hero-card" style="border-color: <%= theme.accent || '#e94560' %>;">
-            <div class="sp-hero-card-title">
-              <span data-lang="ko"><%= t(card.title, 'ko') %></span>
-              <span data-lang="en" style="display:none;"><%= t(card.title, 'en') %></span>
-            </div>
-            <div class="sp-hero-card-desc">
-              <span data-lang="ko"><%= t(card.desc, 'ko') %></span>
-              <span data-lang="en" style="display:none;"><%= t(card.desc, 'en') %></span>
-            </div>
+            <div class="sp-hero-card-title"><%= t(card.title, 'ko') %></div>
+            <div class="sp-hero-card-desc"><%= t(card.desc, 'ko') %></div>
           </div>
         <% }); %>
       </div>
@@ -78,7 +62,7 @@
       <div class="sp-hero-highlights">
         <% hd.highlights.forEach(h => { %>
           <span class="sp-hero-highlight" style="border-color: <%= theme.accent || '#e94560' %>;">
-            &#10003;&nbsp; <span data-lang="ko"><%= t(h, 'ko') %></span><span data-lang="en" style="display:none;"><%= t(h, 'en') %></span>
+            &#10003;&nbsp; <%= t(h, 'ko') %>
           </span>
         <% }); %>
       </div>
@@ -87,16 +71,13 @@
     <!-- Hero CTA Buttons -->
     <div class="sp-hero-cta-wrap">
       <a href="<%= hd.classApplicationUrl || '#' %>" <% if (hd.classApplicationUrl) { %>target="_blank" rel="noopener noreferrer"<% } %> class="sp-hero-cta-btn sp-hero-cta-primary" <% if (!hd.classApplicationUrl) { %>onclick="alert('준비 중입니다.'); return false;"<% } %>>
-        <span data-lang="ko">수업 신청하기</span>
-        <span data-lang="en" style="display:none;">Apply Now</span>
+        수업 신청서 작성
       </a>
       <a href="https://pf.kakao.com/_PuTpxb/chat" target="_blank" rel="noopener noreferrer" class="sp-hero-cta-btn sp-hero-cta-kakao">
-        <span data-lang="ko">문의하기</span>
-        <span data-lang="en" style="display:none;">Contact Us</span>
+        카카오톡 문의
       </a>
       <a href="https://blog.naver.com/kevedu" target="_blank" rel="noopener noreferrer" class="sp-hero-cta-btn sp-hero-cta-blog">
-        <span data-lang="ko">블로그 가기</span>
-        <span data-lang="en" style="display:none;">Visit Blog</span>
+        네이버 블로그 방문
       </a>
     </div>
   </div>
@@ -104,7 +85,6 @@
 
 <!-- Schedule Section (Multi-schedule support) -->
 <%
-  // Normalize: support both old {days, blocks} and new {schedules:[...]} format
   let schedules = [];
   if (sd.schedules && sd.schedules.length > 0) {
     schedules = sd.schedules;
@@ -115,10 +95,7 @@
 <% if (schedules.length > 0) { %>
 <section class="sp-section">
   <div class="sp-container">
-    <h2 class="sp-section-title" style="color: <%= theme.heroBg || '#1a1a2e' %>;">
-      <span data-lang="ko">시간표</span>
-      <span data-lang="en" style="display:none;">Schedule Overview</span>
-    </h2>
+    <h2 class="sp-section-title" style="color: <%= theme.heroBg || '#1a1a2e' %>;">시간표</h2>
 
     <% schedules.forEach((sched, schedIdx) => {
       const schedBlocks = sched.blocks || [];
@@ -136,20 +113,17 @@
       const startHour = minH;
       const endHour = maxH;
       const totalMinutes = (endHour - startHour) * 60;
-      const pxPerMin = 0.8;
+      const pxPerMin = 0.9;
       const topPad = 12;
       const botPad = 12;
       const bodyH = totalMinutes * pxPerMin + topPad + botPad;
     %>
       <div class="sp-timetable-section" style="<%= schedIdx > 0 ? 'margin-top:2.5rem;' : '' %>">
-        <% if (sched.title && (t(sched.title, 'ko') || t(sched.title, 'en'))) { %>
-          <h3 class="sp-timetable-subtitle">
-            <span data-lang="ko"><%= t(sched.title, 'ko') %></span>
-            <span data-lang="en" style="display:none;"><%= t(sched.title, 'en') %></span>
-          </h3>
+        <% if (sched.title && t(sched.title, 'ko')) { %>
+          <h3 class="sp-timetable-subtitle"><%= t(sched.title, 'ko') %></h3>
         <% } %>
         <% if (sched.dateRange && (sched.dateRange.start || sched.dateRange.end)) { %>
-          <p class="sp-timetable-daterange" style="color:var(--gray-500, #868E96);font-size:0.9rem;margin-bottom:0.75rem;">
+          <p class="sp-timetable-daterange" style="color:#868E96;font-size:0.9rem;margin-bottom:0.75rem;">
             <%= sched.dateRange.start || '' %><% if (sched.dateRange.start && sched.dateRange.end) { %> ~ <% } %><%= sched.dateRange.end || '' %>
           </p>
         <% } %>
@@ -171,10 +145,7 @@
               const dayBlocks = schedBlocks.filter(b => b.day === day).sort((a,b) => a.start.localeCompare(b.start));
             %>
               <div class="sp-tt-day-col">
-                <div class="sp-tt-day-header">
-                  <span data-lang="ko"><%= day %></span>
-                  <span data-lang="en" style="display:none;"><%= dayMap[day] || day %></span>
-                </div>
+                <div class="sp-tt-day-header"><%= day %></div>
                 <div class="sp-tt-day-body" style="height:<%= bodyH %>px;">
                   <% for (let h = startHour; h < endHour; h++) { %>
                     <div class="sp-tt-hour-line" style="top:<%= (h - startHour) * 60 * pxPerMin + topPad %>px;"></div>
@@ -184,13 +155,12 @@
                     const bsm = parseInt(block.start.split(':')[1] || 0);
                     const beh = parseInt(block.end.split(':')[0]);
                     const bem = parseInt(block.end.split(':')[1] || 0);
-                    const topPx = ((bsh - startHour) * 60 + bsm) * pxPerMin + topPad;
-                    const heightPx = ((beh * 60 + bem) - (bsh * 60 + bsm)) * pxPerMin;
+                    const topPx = ((bsh - startHour) * 60 + bsm) * pxPerMin + topPad + 1;
+                    const heightPx = ((beh * 60 + bem) - (bsh * 60 + bsm)) * pxPerMin - 2;
                   %>
-                    <div class="sp-tt-block" style="top:<%= topPx %>px;height:<%= heightPx %>px;background:linear-gradient(<%= block.color %>22,<%= block.color %>22),#fff;border-left:3px solid <%= block.color %>;">
+                    <div class="sp-tt-block" style="top:<%= topPx %>px;height:<%= heightPx %>px;background:<%= block.color %>22;border:2px solid <%= block.color %>;">
                       <div class="sp-tt-block-name" style="color:<%= block.color %>;">
-                        <span data-lang="ko"><%= t(block.subject, 'ko') %></span>
-                        <span data-lang="en" style="display:none;"><%= t(block.subject, 'en') %></span>
+                        <%= t(block.subject, 'ko') %>
                       </div>
                       <div class="sp-tt-block-time"><%= block.start %> - <%= block.end %></div>
                     </div>
@@ -209,98 +179,88 @@
 <!-- Schedule CTA -->
 <section class="sp-schedule-cta">
   <a href="<%= hd.classApplicationUrl || '#' %>" <% if (hd.classApplicationUrl) { %>target="_blank" rel="noopener noreferrer"<% } %> class="sp-schedule-cta-btn" <% if (!hd.classApplicationUrl) { %>onclick="alert('준비 중입니다.'); return false;"<% } %>>
-    <span data-lang="ko">수업 신청하기</span>
-    <span data-lang="en" style="display:none;">Apply Now</span>
+    수업 신청하기
   </a>
 </section>
 
 <!-- Syllabus Section -->
 <% if (syl.subjects && syl.subjects.length > 0) { %>
-<section class="sp-section sp-section-alt">
+<section class="sp-section" style="background: <%= theme.heroBg || '#133327' %>;">
   <div class="sp-container">
-    <h2 class="sp-section-title" style="color: <%= theme.heroBg || '#1a1a2e' %>;">
-      <span data-lang="ko">교과 과정</span>
-      <span data-lang="en" style="display:none;">Syllabus</span>
-    </h2>
+    <h2 class="sp-section-title" style="color: #fff;">교과 과정</h2>
 
     <div class="sp-syllabus-tabs" id="spSyllabusTabs">
       <% syl.subjects.forEach((subj, idx) => { %>
-        <button class="sp-tab-btn <%= idx === 0 ? 'active' : '' %>" data-tab="<%= idx %>" style="--accent: <%= accentOnLight %>;">
-          <span data-lang="ko"><%= t(subj.name, 'ko') %></span>
-          <span data-lang="en" style="display:none;"><%= t(subj.name, 'en') %></span>
-        </button>
+        <button class="sp-tab-btn <%= idx === 0 ? 'active' : '' %>" data-tab="<%= idx %>" style="--accent: <%= accentOnLight %>;"><%= t(subj.name, 'ko') %></button>
+        <% if (idx === 4) { %><div class="sp-tab-break"></div><% } %>
       <% }); %>
     </div>
 
-    <% syl.subjects.forEach((subj, idx) => { %>
-      <div class="sp-syllabus-panel <%= idx === 0 ? 'active' : '' %>" data-panel="<%= idx %>">
-        <div class="sp-syllabus-header">
-          <h3>
-            <span data-lang="ko"><%= t(subj.name, 'ko') %></span>
-            <span data-lang="en" style="display:none;"><%= t(subj.name, 'en') %></span>
-          </h3>
-          <p class="sp-syllabus-desc">
-            <span data-lang="ko"><%= t(subj.description, 'ko') %></span>
-            <span data-lang="en" style="display:none;"><%= t(subj.description, 'en') %></span>
-          </p>
-        </div>
-
-        <% if (t(subj.promo, 'ko') || t(subj.promo, 'en')) { %>
-          <div class="sp-syllabus-promo">
-            <span data-lang="ko"><%= t(subj.promo, 'ko') %></span>
-            <span data-lang="en" style="display:none;"><%= t(subj.promo, 'en') %></span>
-          </div>
-        <% } %>
-
-        <% if (subj.highlights && subj.highlights.length > 0) { %>
-          <div class="sp-syllabus-highlights">
-            <h4>
-              <span data-lang="ko">주요 토픽</span>
-              <span data-lang="en" style="display:none;">Key Topics</span>
-            </h4>
-            <ul>
-              <% subj.highlights.forEach(h => { %>
-                <li>
-                  <span data-lang="ko"><%= t(h, 'ko') %></span>
-                  <span data-lang="en" style="display:none;"><%= t(h, 'en') %></span>
-                </li>
-              <% }); %>
-            </ul>
-          </div>
-        <% } %>
-
-        <% if (t(subj.placement, 'ko') || t(subj.placement, 'en')) { %>
-          <div class="sp-syllabus-placement">
-            <strong>
-              <span data-lang="ko">배치 기준:</span>
-              <span data-lang="en" style="display:none;">Placement:</span>
-            </strong>
-            <span data-lang="ko"><%= t(subj.placement, 'ko') %></span>
-            <span data-lang="en" style="display:none;"><%= t(subj.placement, 'en') %></span>
-          </div>
-        <% } %>
-
-        <% if (subj.weeklyPlan && subj.weeklyPlan.length > 0) { %>
-          <div class="sp-weekly-plan">
-            <h4>
-              <span data-lang="ko">회차별 진도</span>
-              <span data-lang="en" style="display:none;">Weekly Plan</span>
-            </h4>
-            <div class="sp-weekly-grid">
-              <% subj.weeklyPlan.forEach(wp => { %>
-                <div class="sp-weekly-item" style="border-left-color: <%= accentOnLight %>;">
-                  <div class="sp-weekly-week"><%= wp.week %></div>
-                  <div class="sp-weekly-topic">
-                    <span data-lang="ko"><%= t(wp.topic, 'ko') %></span>
-                    <span data-lang="en" style="display:none;"><%= t(wp.topic, 'en') %></span>
-                  </div>
-                </div>
-              <% }); %>
-            </div>
-          </div>
-        <% } %>
+    <div class="sp-syllabus-panels-wrap" style="position:relative;">
+      <!-- KOR / ENG toggle inside panels area -->
+      <div class="sp-syl-lang-toggle" id="spSylLangToggle">
+        <button class="sp-syl-lang-btn active" data-lang="ko">KOR</button>
+        <button class="sp-syl-lang-btn" data-lang="en">ENG</button>
       </div>
-    <% }); %>
+
+      <% syl.subjects.forEach((subj, idx) => { %>
+        <div class="sp-syllabus-panel <%= idx === 0 ? 'active' : '' %>" data-panel="<%= idx %>">
+          <div class="sp-syllabus-header">
+            <h3><%= t(subj.name, 'ko') %></h3>
+            <p class="sp-syllabus-desc">
+              <span data-syl-lang="ko"><%= t(subj.description, 'ko') %></span>
+              <span data-syl-lang="en" style="display:none;"><%= t(subj.description, 'en') %></span>
+            </p>
+          </div>
+
+          <% if (t(subj.promo, 'ko') || t(subj.promo, 'en')) { %>
+            <div class="sp-syllabus-promo">
+              <span data-syl-lang="ko"><%= t(subj.promo, 'ko') %></span>
+              <span data-syl-lang="en" style="display:none;"><%= t(subj.promo, 'en') %></span>
+            </div>
+          <% } %>
+
+          <% if (subj.highlights && subj.highlights.length > 0) { %>
+            <div class="sp-syllabus-highlights">
+              <h4>주요 토픽</h4>
+              <ul>
+                <% subj.highlights.forEach(h => { %>
+                  <li>
+                    <span data-syl-lang="ko"><%= t(h, 'ko') %></span>
+                    <span data-syl-lang="en" style="display:none;"><%= t(h, 'en') %></span>
+                  </li>
+                <% }); %>
+              </ul>
+            </div>
+          <% } %>
+
+          <% if (t(subj.placement, 'ko') || t(subj.placement, 'en')) { %>
+            <div class="sp-syllabus-placement">
+              <strong>배치 기준:</strong>
+              <span data-syl-lang="ko"><%= t(subj.placement, 'ko') %></span>
+              <span data-syl-lang="en" style="display:none;"><%= t(subj.placement, 'en') %></span>
+            </div>
+          <% } %>
+
+          <% if (subj.weeklyPlan && subj.weeklyPlan.length > 0) { %>
+            <div class="sp-weekly-plan">
+              <h4>회차별 진도</h4>
+              <div class="sp-weekly-grid">
+                <% subj.weeklyPlan.forEach(wp => { %>
+                  <div class="sp-weekly-item" style="border-left-color: <%= accentOnLight %>;">
+                    <div class="sp-weekly-week"><%= wp.week %></div>
+                    <div class="sp-weekly-topic">
+                      <span data-syl-lang="ko"><%= t(wp.topic, 'ko') %></span>
+                      <span data-syl-lang="en" style="display:none;"><%= t(wp.topic, 'en') %></span>
+                    </div>
+                  </div>
+                <% }); %>
+              </div>
+            </div>
+          <% } %>
+        </div>
+      <% }); %>
+    </div>
   </div>
 </section>
 <% } %>
@@ -309,10 +269,7 @@
 <% if (hd.profileImageId) { %>
 <section class="sp-section">
   <div class="sp-container">
-    <h2 class="sp-section-title" style="color: <%= theme.heroBg || '#1a1a2e' %>;">
-      <span data-lang="ko">강사 프로필</span>
-      <span data-lang="en" style="display:none;">Instructor Profile</span>
-    </h2>
+    <h2 class="sp-section-title" style="color: <%= theme.heroBg || '#133327' %>;">강사 프로필</h2>
     <div class="sp-profile-image-wrap" style="text-align:center;">
       <img src="/schedule-profile-image/<%= encodeURIComponent(hd.profileImageId) %>" alt="강사 프로필" style="max-width:100%;border-radius:8px;">
     </div>
@@ -330,14 +287,6 @@
   </div>
 </footer>
 
-<!-- Export bar -->
-<div class="sp-export-bar">
-  <button class="sp-export-btn" id="spExportPng">PNG</button>
-  <button class="sp-export-btn" id="spExportPdf">PDF</button>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="/js/schedule-public.js"></script>
 </body>
 </html>
