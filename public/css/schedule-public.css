@@ -333,6 +333,7 @@ body {
   right: 3px;
   border-radius: 6px;
   padding: 4px 6px;
+  z-index: 1;
   overflow: hidden;
   z-index: 1;
 }

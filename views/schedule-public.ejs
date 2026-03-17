@@ -158,7 +158,7 @@
                     const topPx = ((bsh - startHour) * 60 + bsm) * pxPerMin + topPad + 1;
                     const heightPx = ((beh * 60 + bem) - (bsh * 60 + bsm)) * pxPerMin - 2;
                   %>
-                    <div class="sp-tt-block" style="top:<%= topPx %>px;height:<%= heightPx %>px;background:<%= block.color %>22;border:2px solid <%= block.color %>;">
+                    <div class="sp-tt-block" style="top:<%= topPx %>px;height:<%= heightPx %>px;background: linear-gradient(<%= block.color %>22, <%= block.color %>22), #fff;border:2px solid <%= block.color %>;">
                       <div class="sp-tt-block-name" style="color:<%= block.color %>;">
                         <%= t(block.subject, 'ko') %>
                       </div>
