@@ -2144,10 +2144,14 @@ function initScheduleEditorPage() {
   }
 
   // Preview
-  document.getElementById('sePreviewBtn').addEventListener('click', () => {
+  document.getElementById('sePreviewBtn').addEventListener('click', async () => {
     const slug = slugInput.value;
     if (!slug) { alert('slug를 먼저 입력해주세요.'); return; }
-    window.open('/p/' + slug, '_blank');
+    if (dirty) {
+      document.getElementById('seSaveBtn').click();
+      await new Promise(r => setTimeout(r, 1500));
+    }
+    window.open('/p/' + slug + '/preview', '_blank');
   });
 
   // Load existing data

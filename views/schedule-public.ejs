@@ -27,6 +27,10 @@
   }
 %>
 
+<% if (typeof preview !== 'undefined' && preview) { %>
+<div class="sp-preview-banner">미리보기 모드 — 이 페이지는 아직 공개되지 않았습니다</div>
+<% } %>
+
 <!-- Top Nav Bar -->
 <nav class="sp-topnav">
   <a href="/" class="sp-topnav-logo">

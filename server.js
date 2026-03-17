@@ -135,6 +135,37 @@ app.get('/schedule-profile-image/:filePath(*)', async (req, res) => {
 });
 
 // Public schedule page (no auth)
+// Preview route (owner or admin only, any status)
+app.get('/p/:slug/preview', async (req, res) => {
+  try {
+    const user = req.session.user;
+    if (!user) return res.redirect('/management');
+
+    const rows = await sql`SELECT * FROM schedule_pages WHERE slug = ${req.params.slug}`;
+    if (rows.length === 0) return res.render('schedule-public-404');
+
+    const page = rows[0];
+    const isOwner = page.owner_id === user.id;
+    const isAdmin = user.role === 'admin' || user.role === 'subadmin';
+    if (!isOwner && !isAdmin) return res.render('schedule-public-404');
+
+    res.render('schedule-public', {
+      page: {
+        title: page.title,
+        slug: page.slug,
+        header_data: JSON.parse(page.header_data || '{}'),
+        schedule_data: JSON.parse(page.schedule_data || '{}'),
+        syllabus_data: JSON.parse(page.syllabus_data || '{}'),
+        theme_data: JSON.parse(page.theme_data || '{}')
+      },
+      preview: true
+    });
+  } catch (err) {
+    console.error('Preview error:', err);
+    res.render('schedule-public-404');
+  }
+});
+
 app.get('/p/:slug', async (req, res) => {
   try {
     const rows = await sql`SELECT * FROM schedule_pages WHERE slug = ${req.params.slug} AND status = 'published'`;
