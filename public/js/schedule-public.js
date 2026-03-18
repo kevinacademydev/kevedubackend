@@ -13,6 +13,32 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Timetable block click → scroll to matching syllabus
+  document.querySelectorAll('.sp-tt-block-clickable').forEach(block => {
+    block.addEventListener('click', () => {
+      const subjectId = block.dataset.subjectId;
+      if (!subjectId) return;
+
+      // Find the matching syllabus tab and activate it
+      const matchTab = document.querySelector(`#spSyllabusTabs .sp-tab-btn[data-subject-id="${subjectId}"]`);
+      if (matchTab) {
+        // Activate tab
+        tabBtns.forEach(b => b.classList.remove('active'));
+        panels.forEach(p => p.classList.remove('active'));
+        matchTab.classList.add('active');
+        const tabIdx = matchTab.dataset.tab;
+        const panel = document.querySelector(`.sp-syllabus-panel[data-panel="${tabIdx}"]`);
+        if (panel) panel.classList.add('active');
+
+        // Scroll to syllabus section
+        const syllabusSection = document.getElementById('spSyllabusTabs');
+        if (syllabusSection) {
+          syllabusSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    });
+  });
+
   // Syllabus-scoped language toggle (KOR/ENG inside panel area only)
   let currentSylLang = 'ko';
   const sylLangBtns = document.querySelectorAll('#spSylLangToggle .sp-syl-lang-btn');

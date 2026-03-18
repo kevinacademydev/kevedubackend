@@ -2194,13 +2194,6 @@ body {
   border-radius: var(--radius);
 }
 
-.se-subject-color-dot {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
 .se-subject-item input[type="text"] {
   flex: 1;
   min-width: 0;
@@ -2216,12 +2209,10 @@ body {
   border-color: var(--primary);
 }
 
-.se-subject-item input[type="color"] {
-  width: 32px;
-  height: 32px;
-  border: none;
-  padding: 0;
-  cursor: pointer;
+.se-subject-block-count {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  white-space: nowrap;
   flex-shrink: 0;
 }
 

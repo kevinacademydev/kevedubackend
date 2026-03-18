@@ -162,7 +162,7 @@
                     const topPx = ((bsh - startHour) * 60 + bsm) * pxPerMin + topPad + 1;
                     const heightPx = ((beh * 60 + bem) - (bsh * 60 + bsm)) * pxPerMin - 2;
                   %>
-                    <div class="sp-tt-block" style="top:<%= topPx %>px;height:<%= heightPx %>px;background: linear-gradient(<%= block.color %>22, <%= block.color %>22), #fff;border:2px solid <%= block.color %>;">
+                    <div class="sp-tt-block<%= block.subjectId ? ' sp-tt-block-clickable' : '' %>" data-subject-id="<%= block.subjectId || '' %>" style="top:<%= topPx %>px;height:<%= heightPx %>px;background: linear-gradient(<%= block.color %>22, <%= block.color %>22), #fff;border:2px solid <%= block.color %>;<%= block.subjectId ? 'cursor:pointer;' : '' %>">
                       <div class="sp-tt-block-name" style="color:<%= block.color %>;">
                         <%= t(block.subject, 'ko') %>
                       </div>
@@ -195,7 +195,7 @@
 
     <div class="sp-syllabus-tabs" id="spSyllabusTabs">
       <% syl.subjects.forEach((subj, idx) => { %>
-        <button class="sp-tab-btn <%= idx === 0 ? 'active' : '' %>" data-tab="<%= idx %>" style="--accent: <%= accentOnLight %>;"><%= t(subj.name, 'ko') %></button>
+        <button class="sp-tab-btn <%= idx === 0 ? 'active' : '' %>" data-tab="<%= idx %>" data-subject-id="<%= subj.subjectId || '' %>" style="--accent: <%= accentOnLight %>;"><%= t(subj.name, 'ko') %></button>
         <% if (idx === 4) { %><div class="sp-tab-break"></div><% } %>
       <% }); %>
     </div>
@@ -208,7 +208,7 @@
       </div>
 
       <% syl.subjects.forEach((subj, idx) => { %>
-        <div class="sp-syllabus-panel <%= idx === 0 ? 'active' : '' %>" data-panel="<%= idx %>">
+        <div class="sp-syllabus-panel <%= idx === 0 ? 'active' : '' %>" data-panel="<%= idx %>" data-subject-id="<%= subj.subjectId || '' %>">
           <div class="sp-syllabus-header">
             <h3><%= t(subj.name, 'ko') %></h3>
             <p class="sp-syllabus-desc">
