@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const { sql } = require('../db/database');
-const { uploadFile, downloadFile } = require('../utils/drive');
+const { uploadFile, downloadFile, deleteFile } = require('../utils/drive');
 
 // 학생 인증 미들웨어
 function requireStudent(req, res, next) {
@@ -121,7 +121,16 @@ router.get('/class/:classId', requireStudent, async (req, res) => {
       ORDER BY c.name ASC
     `;
 
-    res.render('student-class', { cls, submissions, gradedFiles, classSchedules, myScores, averages, ranks, totalStudents, myClasses });
+    // 교재 목록 + 학생별 다운로드 횟수
+    const textbooks = await sql`
+      SELECT ct.*, u.name as uploader_name,
+        (SELECT COUNT(*) FROM textbook_downloads td WHERE td.textbook_id = ct.id AND td.student_id = ${userId}) as download_count
+      FROM class_textbooks ct JOIN users u ON ct.uploaded_by = u.id
+      WHERE ct.class_id = ${classId}
+      ORDER BY ct.uploaded_at DESC
+    `;
+
+    res.render('student-class', { cls, submissions, gradedFiles, classSchedules, myScores, averages, ranks, totalStudents, myClasses, textbooks });
   } catch (err) {
     console.error('Student class error:', err);
     res.status(500).send('서버 오류');
@@ -199,6 +208,38 @@ router.get('/class/:classId/schedules', requireStudent, async (req, res) => {
   } catch (err) {
     console.error('Student schedules error:', err);
     res.status(500).json({ error: '서버 오류' });
+  }
+});
+
+// GET /student/class/:classId/textbook/:tid/download - 교재 다운로드 (3회 제한)
+router.get('/class/:classId/textbook/:tid/download', requireStudent, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const classId = parseInt(req.params.classId, 10);
+    const tid = parseInt(req.params.tid, 10);
+
+    const enrolled = await sql`SELECT id FROM class_enrollments WHERE class_id = ${classId} AND student_id = ${userId} AND status = 'active'`;
+    if (enrolled.length === 0) return res.status(403).send('등록되지 않은 수업입니다.');
+
+    const rows = await sql`SELECT * FROM class_textbooks WHERE id = ${tid} AND class_id = ${classId}`;
+    if (rows.length === 0) return res.status(404).send('교재를 찾을 수 없습니다.');
+
+    const countRows = await sql`SELECT COUNT(*) as cnt FROM textbook_downloads WHERE textbook_id = ${tid} AND student_id = ${userId}`;
+    const count = parseInt(countRows[0].cnt, 10);
+    if (count >= 3) return res.status(403).json({ error: '다운로드 횟수(3회)를 초과했습니다.' });
+
+    const textbook = rows[0];
+    const { buffer, mimeType } = await downloadFile(textbook.file_path);
+
+    await sql`INSERT INTO textbook_downloads (textbook_id, student_id) VALUES (${tid}, ${userId})`;
+
+    const encodedName = encodeURIComponent(textbook.file_name);
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedName}`);
+    res.setHeader('Content-Type', mimeType);
+    res.send(buffer);
+  } catch (err) {
+    console.error('Textbook download error:', err);
+    res.status(500).send('파일 다운로드에 실패했습니다.');
   }
 });
 

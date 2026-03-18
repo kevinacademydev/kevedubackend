@@ -136,6 +136,32 @@
           </div>
         </div>
 
+        <% if (textbooks.length > 0) { %>
+        <div class="card" style="margin-bottom:1.5rem;">
+          <div class="card-header"><h3>수업 교재</h3></div>
+          <div class="card-body">
+            <div class="file-list">
+              <% textbooks.forEach(tb => { %>
+                <div class="file-item">
+                  <div class="file-info">
+                    <span class="file-name"><%= tb.file_name %></span>
+                    <span class="file-date"><%= tb.uploaded_at %></span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <span class="textbook-remaining" data-tid="<%= tb.id %>" style="font-size:0.8rem;color:var(--gray-500);">잔여 <%= 3 - tb.download_count %>회</span>
+                    <% if (tb.download_count < 3) { %>
+                      <a href="/management/student/class/<%= cls.id %>/textbook/<%= tb.id %>/download" class="btn btn-sm btn-primary btn-download-textbook" data-tid="<%= tb.id %>">다운로드</a>
+                    <% } else { %>
+                      <button class="btn btn-sm btn-outline" disabled>횟수 초과</button>
+                    <% } %>
+                  </div>
+                </div>
+              <% }) %>
+            </div>
+          </div>
+        </div>
+        <% } %>
+
         <div class="dashboard-grid">
           <!-- Left: 파일 관련 -->
           <div>

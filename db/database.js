@@ -45,6 +45,24 @@ async function initDB() {
     console.log('[DB] 테이블이 없습니다. migration.sql을 먼저 Supabase SQL Editor에서 실행해주세요.');
     process.exit(1);
   }
+  // 새 테이블 자동 생성 (기존 테이블 있으면 무시)
+  await sql`CREATE TABLE IF NOT EXISTS class_textbooks (
+    id SERIAL PRIMARY KEY,
+    class_id INTEGER NOT NULL REFERENCES classes(id),
+    uploaded_by INTEGER NOT NULL REFERENCES users(id),
+    file_name TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    uploaded_at TIMESTAMPTZ DEFAULT NOW()
+  )`;
+  await sql`CREATE TABLE IF NOT EXISTS textbook_downloads (
+    id SERIAL PRIMARY KEY,
+    textbook_id INTEGER NOT NULL REFERENCES class_textbooks(id) ON DELETE CASCADE,
+    student_id INTEGER NOT NULL REFERENCES users(id),
+    downloaded_at TIMESTAMPTZ DEFAULT NOW()
+  )`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_class_textbooks_class ON class_textbooks(class_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_textbook_downloads_textbook ON textbook_downloads(textbook_id)`;
+
   await seedIfEmpty();
   console.log('[DB] 연결 완료');
 }

@@ -128,6 +128,22 @@ CREATE TABLE IF NOT EXISTS verification_codes (
   expires_at TIMESTAMPTZ NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS class_textbooks (
+  id SERIAL PRIMARY KEY,
+  class_id INTEGER NOT NULL REFERENCES classes(id),
+  uploaded_by INTEGER NOT NULL REFERENCES users(id),
+  file_name TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  uploaded_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS textbook_downloads (
+  id SERIAL PRIMARY KEY,
+  textbook_id INTEGER NOT NULL REFERENCES class_textbooks(id) ON DELETE CASCADE,
+  student_id INTEGER NOT NULL REFERENCES users(id),
+  downloaded_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 인덱스
 CREATE INDEX IF NOT EXISTS idx_class_enrollments_class ON class_enrollments(class_id);
 CREATE INDEX IF NOT EXISTS idx_class_enrollments_student ON class_enrollments(student_id);
@@ -140,3 +156,5 @@ CREATE INDEX IF NOT EXISTS idx_class_schedules_class ON class_schedules(class_id
 CREATE INDEX IF NOT EXISTS idx_schedule_pages_slug ON schedule_pages(slug);
 CREATE INDEX IF NOT EXISTS idx_verification_codes_target ON verification_codes(target, purpose);
 CREATE INDEX IF NOT EXISTS idx_verification_codes_expires ON verification_codes(expires_at);
+CREATE INDEX IF NOT EXISTS idx_class_textbooks_class ON class_textbooks(class_id);
+CREATE INDEX IF NOT EXISTS idx_textbook_downloads_textbook ON textbook_downloads(textbook_id);

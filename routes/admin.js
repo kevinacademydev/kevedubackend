@@ -596,7 +596,9 @@ router.get('/class/:id', requireAdmin, async (req, res) => {
       allTeachers = await sql`SELECT id, username, name FROM users WHERE role = 'teacher' ORDER BY username`;
     }
 
-    res.render('admin-class', { cls, students, classTeachers, submissions, gradedFiles, scoreData, classSchedules, allTeachers, userRole, userId, isAdminLike: isAdminLike(userRole) });
+    const textbooks = await sql`SELECT ct.*, u.name as uploader_name FROM class_textbooks ct JOIN users u ON ct.uploaded_by = u.id WHERE ct.class_id = ${classId} ORDER BY ct.uploaded_at DESC`;
+
+    res.render('admin-class', { cls, students, classTeachers, submissions, gradedFiles, scoreData, classSchedules, allTeachers, textbooks, userRole, userId, isAdminLike: isAdminLike(userRole) });
   } catch (err) {
     console.error('Admin class error:', err);
     res.status(500).send('서버 오류');
@@ -639,10 +641,59 @@ router.post('/class/:id/notes', requireAdmin, async (req, res) => {
   }
 });
 
+// POST /admin/class/:id/textbook - 교재 업로드
+router.post('/class/:id/textbook', requireAdmin, (req, res) => {
+  const classId = parseInt(req.params.id, 10);
+  const userId = req.session.user.id;
+
+  upload.single('file')(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: '파일을 선택해주세요.' });
+
+    try {
+      if (!(await canAccessClass(userId, req.session.user.role, classId))) {
+        return res.status(403).json({ error: '접근 권한이 없습니다.' });
+      }
+
+      const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
+      const driveFileId = await uploadFile(req.file.buffer, `textbook-${classId}-${Date.now()}-${originalName}`, req.file.mimetype);
+      await sql`INSERT INTO class_textbooks (class_id, uploaded_by, file_name, file_path) VALUES (${classId}, ${userId}, ${originalName}, ${driveFileId})`;
+      res.json({ success: true });
+    } catch (uploadErr) {
+      console.error('Textbook upload error:', uploadErr);
+      res.status(500).json({ error: '파일 업로드에 실패했습니다.' });
+    }
+  });
+});
+
+// POST /admin/class/:id/textbook/:tid/delete - 교재 삭제
+router.post('/class/:id/textbook/:tid/delete', requireAdmin, async (req, res) => {
+  try {
+    const classId = parseInt(req.params.id, 10);
+    const tid = parseInt(req.params.tid, 10);
+
+    if (!(await canAccessClass(req.session.user.id, req.session.user.role, classId))) {
+      return res.status(403).json({ error: '접근 권한이 없습니다.' });
+    }
+
+    const rows = await sql`SELECT * FROM class_textbooks WHERE id = ${tid} AND class_id = ${classId}`;
+    if (rows.length === 0) return res.status(404).json({ error: '교재를 찾을 수 없습니다.' });
+
+    try { await deleteFile(rows[0].file_path); } catch (e) { console.error('Textbook file delete error:', e); }
+    await sql`DELETE FROM class_textbooks WHERE id = ${tid}`;
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Textbook delete error:', err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+});
+
 // POST /admin/class/:id/delete - 수업 삭제 (cascade)
 router.post('/class/:id/delete', requireAdminLike, async (req, res) => {
   try {
     const classId = req.params.id;
+    await sql`DELETE FROM textbook_downloads WHERE textbook_id IN (SELECT id FROM class_textbooks WHERE class_id = ${classId})`;
+    await sql`DELETE FROM class_textbooks WHERE class_id = ${classId}`;
     await sql`DELETE FROM class_scores WHERE class_id = ${classId}`;
     await sql`DELETE FROM class_schedules WHERE class_id = ${classId}`;
     await sql`DELETE FROM graded_files WHERE class_id = ${classId}`;

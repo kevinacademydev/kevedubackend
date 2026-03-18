@@ -171,6 +171,38 @@
             </div>
           </div>
 
+            <!-- 수업 교재 -->
+            <div class="card" style="margin-bottom:1.5rem;">
+              <div class="card-header">
+                <h3>수업 교재</h3>
+              </div>
+              <div class="card-body">
+                <% if (textbooks.length === 0) { %>
+                  <p class="empty-message">등록된 교재가 없습니다.</p>
+                <% } else { %>
+                  <div class="file-list">
+                    <% textbooks.forEach(tb => { %>
+                      <div class="file-item">
+                        <div class="file-info">
+                          <span class="file-name"><%= tb.file_name %></span>
+                          <span class="file-date"><%= tb.uploader_name %> | <%= tb.uploaded_at %></span>
+                        </div>
+                        <button class="btn btn-sm btn-danger btn-delete-textbook" data-tid="<%= tb.id %>">삭제</button>
+                      </div>
+                    <% }) %>
+                  </div>
+                <% } %>
+                <div style="margin-top:0.75rem;">
+                  <label class="btn btn-sm btn-outline" style="cursor:pointer;">
+                    교재 업로드
+                    <input type="file" id="textbookFileInput" accept=".pdf" style="display:none;">
+                  </label>
+                  <span id="textbookUploadResult" style="margin-left:0.5rem;font-size:0.85rem;"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Right column -->
           <div>
             <!-- 채점 파일 업로드 -->

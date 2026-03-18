@@ -396,6 +396,39 @@ function initAdminClassPage() {
     });
   }
 
+  // Textbook upload
+  const textbookInput = document.getElementById('textbookFileInput');
+  if (textbookInput) {
+    textbookInput.addEventListener('change', async () => {
+      if (!textbookInput.files.length) return;
+      const resultEl = document.getElementById('textbookUploadResult');
+      resultEl.textContent = '업로드 중...';
+      resultEl.style.color = 'var(--gray-500)';
+      const formData = new FormData();
+      formData.append('file', textbookInput.files[0]);
+      try {
+        const res = await fetch(`${window.__SEC}/class/${classId}/textbook`, { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success) location.reload();
+        else { resultEl.textContent = data.error || '업로드 실패'; resultEl.style.color = 'var(--danger)'; }
+      } catch (e) {
+        resultEl.textContent = '업로드 중 오류 발생'; resultEl.style.color = 'var(--danger)';
+      }
+      textbookInput.value = '';
+    });
+  }
+
+  // Textbook delete
+  document.querySelectorAll('.btn-delete-textbook').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('교재를 삭제하시겠습니까?')) return;
+      const res = await fetch(`${window.__SEC}/class/${classId}/textbook/${btn.dataset.tid}/delete`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) location.reload();
+      else alert(data.error || '삭제 실패');
+    });
+  });
+
   // Save notes
   const btnSaveNotes = document.getElementById('btnSaveNotes');
   if (btnSaveNotes) {
@@ -547,6 +580,28 @@ function initAdminStudentPage() {
 function initStudentClassPage() {
   const el = document.getElementById('studentClassPage');
   const classId = el.dataset.classId;
+
+  // Textbook download - update remaining count after click
+  document.querySelectorAll('.btn-download-textbook').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tid = btn.dataset.tid;
+      const remainEl = document.querySelector(`.textbook-remaining[data-tid="${tid}"]`);
+      if (remainEl) {
+        const match = remainEl.textContent.match(/(\d+)/);
+        if (match) {
+          const newCount = Math.max(0, parseInt(match[1], 10) - 1);
+          remainEl.textContent = `잔여 ${newCount}회`;
+          if (newCount === 0) {
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-outline');
+            btn.textContent = '횟수 초과';
+            btn.removeAttribute('href');
+            btn.style.pointerEvents = 'none';
+          }
+        }
+      }
+    });
+  });
 
   // Homework upload
   const hwDropzone = document.getElementById('homeworkDropzone');
