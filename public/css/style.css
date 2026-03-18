@@ -2088,7 +2088,10 @@ body {
   background: white;
   border-radius: var(--radius);
   padding: 1.25rem;
-  width: 300px;
+  width: 380px;
+  max-width: 95vw;
+  max-height: 85vh;
+  overflow-y: auto;
   box-shadow: var(--shadow-lg);
 }
 
