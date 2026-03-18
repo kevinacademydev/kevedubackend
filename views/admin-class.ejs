@@ -18,7 +18,7 @@
           <%= cls.name %>
           <span class="badge"><%= cls.type === 'regular' ? '정규' : cls.type === 'team' ? '그룹' : '개인' %></span>
           <% if (cls.status === 'upcoming') { %><span class="badge badge-upcoming">예정</span><% } %>
-          <% if (cls.status === 'inactive') { %><span class="badge">비활성</span><% } %>
+          <% if (cls.status === 'inactive') { %><span class="badge">종강</span><% } %>
         </h2>
       </div>
 
@@ -49,9 +49,9 @@
               <div class="form-group">
                 <label>상태</label>
                 <select id="editClassStatus">
-                  <option value="active" <%= cls.status === 'active' ? 'selected' : '' %>>활성</option>
+                  <option value="active" <%= cls.status === 'active' ? 'selected' : '' %>>진행 중</option>
                   <option value="upcoming" <%= cls.status === 'upcoming' ? 'selected' : '' %>>예정</option>
-                  <option value="inactive" <%= cls.status === 'inactive' ? 'selected' : '' %>>비활성</option>
+                  <option value="inactive" <%= cls.status === 'inactive' ? 'selected' : '' %>>종강</option>
                 </select>
               </div>
               <button class="btn btn-primary" id="btnEditClass">저장</button>

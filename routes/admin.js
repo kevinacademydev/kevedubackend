@@ -1516,8 +1516,10 @@ router.post('/schedule-pages/:id/generate-sessions', requireAdmin, async (req, r
     }
 
     const scheduleData = JSON.parse(page.schedule_data || '{}');
+    const syllabusData = JSON.parse(page.syllabus_data || '{}');
     const schedules = scheduleData.schedules || [];
     const sections = scheduleData.sections || [];
+    const syllabusSubjects = syllabusData.subjects || [];
 
     // Find target schedule
     const targetSchedule = schedules.find(s => s.id === scheduleId);
@@ -1552,6 +1554,12 @@ router.post('/schedule-pages/:id/generate-sessions', requireAdmin, async (req, r
       // Count existing schedules for this class to continue numbering
       const existingCount = await sql`SELECT COUNT(*)::int as cnt FROM class_schedules WHERE class_id = ${classId}`;
       let sessionNum = (existingCount[0]?.cnt || 0) + 1;
+
+      // Find syllabus weeklyPlan for this section's subject
+      const syllSubj = sec.subjectId
+        ? syllabusSubjects.find(s => s.subjectId === sec.subjectId)
+        : null;
+      const weeklyPlan = syllSubj?.weeklyPlan || [];
 
       let created = 0;
       let skipped = 0;
@@ -1589,8 +1597,13 @@ router.post('/schedule-pages/:id/generate-sessions', requireAdmin, async (req, r
           continue;
         }
 
+        // Build description: "N회차" + syllabus topic if available
+        const planEntry = weeklyPlan[sessionNum - 1];
+        const topic = planEntry?.topic?.ko || '';
+        const desc = topic ? `${sessionNum}회차: ${topic}` : `${sessionNum}회차`;
+
         await sql`INSERT INTO class_schedules (class_id, schedule_date, start_time, end_time, description)
-          VALUES (${classId}, ${date}, ${slot.start}, ${slot.end}, ${sessionNum + '회차'})`;
+          VALUES (${classId}, ${date}, ${slot.start}, ${slot.end}, ${desc})`;
         sessionNum++;
         created++;
       }
