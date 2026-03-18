@@ -396,25 +396,65 @@ function initAdminClassPage() {
     });
   }
 
-  // Textbook upload
+  // Textbook upload (drag & drop + multi-file)
+  const textbookDropzone = document.getElementById('textbookDropzone');
   const textbookInput = document.getElementById('textbookFileInput');
-  if (textbookInput) {
-    textbookInput.addEventListener('change', async () => {
-      if (!textbookInput.files.length) return;
+  if (textbookDropzone && textbookInput) {
+    async function uploadTextbooks(files) {
+      if (!files.length) return;
+      const progressDiv = document.getElementById('textbookProgress');
+      const progressFill = document.getElementById('textbookProgressFill');
       const resultEl = document.getElementById('textbookUploadResult');
+      progressDiv.style.display = 'block';
+      progressFill.style.width = '0%';
       resultEl.textContent = '업로드 중...';
       resultEl.style.color = 'var(--gray-500)';
+
       const formData = new FormData();
-      formData.append('file', textbookInput.files[0]);
+      for (const f of files) formData.append('files', f);
+
       try {
-        const res = await fetch(`${window.__SEC}/class/${classId}/textbook`, { method: 'POST', body: formData });
-        const data = await res.json();
-        if (data.success) location.reload();
-        else { resultEl.textContent = data.error || '업로드 실패'; resultEl.style.color = 'var(--danger)'; }
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${window.__SEC}/class/${classId}/textbook`);
+        xhr.upload.addEventListener('progress', e => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            progressFill.style.width = pct + '%';
+            resultEl.textContent = '업로드 중... ' + pct + '%';
+          }
+        });
+        await new Promise((resolve, reject) => {
+          xhr.onload = () => {
+            if (xhr.status === 200) {
+              const data = JSON.parse(xhr.responseText);
+              if (data.success) resolve(data);
+              else reject(new Error(data.error || '업로드 실패'));
+            } else reject(new Error('서버 오류'));
+          };
+          xhr.onerror = () => reject(new Error('네트워크 오류'));
+          xhr.send(formData);
+        });
+        resultEl.textContent = '업로드 완료!';
+        resultEl.style.color = 'var(--success, #16a34a)';
+        setTimeout(() => location.reload(), 800);
       } catch (e) {
-        resultEl.textContent = '업로드 중 오류 발생'; resultEl.style.color = 'var(--danger)';
+        resultEl.textContent = e.message || '업로드 중 오류 발생';
+        resultEl.style.color = 'var(--danger)';
       }
       textbookInput.value = '';
+    }
+
+    textbookInput.addEventListener('change', () => uploadTextbooks(Array.from(textbookInput.files)));
+    textbookDropzone.addEventListener('click', () => textbookInput.click());
+    ['dragenter','dragover'].forEach(evt => {
+      textbookDropzone.addEventListener(evt, e => { e.preventDefault(); textbookDropzone.style.borderColor = '#2563eb'; textbookDropzone.style.background = '#eff6ff'; });
+    });
+    ['dragleave','drop'].forEach(evt => {
+      textbookDropzone.addEventListener(evt, e => { e.preventDefault(); textbookDropzone.style.borderColor = '#cbd5e1'; textbookDropzone.style.background = ''; });
+    });
+    textbookDropzone.addEventListener('drop', e => {
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length) uploadTextbooks(files);
     });
   }
 

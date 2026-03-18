@@ -275,8 +275,17 @@
           </div>
         </div>
 
-        <!-- Drop zone -->
-        <div class="dropzone" id="dropzone">
+        <!-- File table -->
+        <div class="card">
+          <div class="card-body" style="padding:0;">
+            <div id="fileListContainer">
+              <div class="loading-spinner">불러오는 중...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Drop zone (below file list) -->
+        <div class="dropzone" id="dropzone" style="margin-top:1rem;">
           &#128228; 파일을 여기에 드래그하거나 위 '업로드' 버튼을 클릭하세요
           <p>최대 50MB, 여러 파일 동시 업로드 가능</p>
         </div>
@@ -285,15 +294,6 @@
         <div class="upload-progress" id="uploadProgress">
           <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
           <div class="progress-text" id="progressText">업로드 중...</div>
-        </div>
-
-        <!-- File table -->
-        <div class="card">
-          <div class="card-body" style="padding:0;">
-            <div id="fileListContainer">
-              <div class="loading-spinner">불러오는 중...</div>
-            </div>
-          </div>
         </div>
       </div>
     </main>

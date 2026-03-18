@@ -157,4 +157,52 @@ async function createFolder(folderPath) {
   return folderPath;
 }
 
-module.exports = { uploadFile, downloadFile, deleteFile, listFiles, uploadFileDirect, createFolder };
+// 디렉토리/파일명 안전 변환 (공백→_, 특수문자 제거, 한글 허용)
+function sanitizeName(name) {
+  if (!name) return 'unnamed';
+  return name
+    .replace(/\s+/g, '_')
+    .replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ_\-\.]/g, '')
+    .replace(/_{2,}/g, '_')
+    .replace(/^_|_$/g, '') || 'unnamed';
+}
+
+// 중복 파일명 처리: 존재 시 filename (2).ext → (3) → ... 순차 시도
+async function getUniquePath(desiredPath) {
+  const storage = getStorage();
+  if (!storage || !BUCKET_NAME) return desiredPath;
+
+  const bucket = storage.bucket(BUCKET_NAME);
+
+  // 먼저 원본 경로 확인
+  const [exists] = await bucket.file(desiredPath).exists();
+  if (!exists) return desiredPath;
+
+  // 확장자 분리
+  const lastDot = desiredPath.lastIndexOf('.');
+  const base = lastDot > 0 ? desiredPath.substring(0, lastDot) : desiredPath;
+  const ext = lastDot > 0 ? desiredPath.substring(lastDot) : '';
+
+  let counter = 2;
+  while (counter <= 100) {
+    const candidate = `${base} (${counter})${ext}`;
+    const [candidateExists] = await bucket.file(candidate).exists();
+    if (!candidateExists) return candidate;
+    counter++;
+  }
+
+  // fallback: timestamp 추가
+  return `${base}_${Date.now()}${ext}`;
+}
+
+// KST 기준 YYYYMMDD 문자열
+function getKSTDateString() {
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const y = kst.getUTCFullYear();
+  const m = String(kst.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(kst.getUTCDate()).padStart(2, '0');
+  return `${y}${m}${d}`;
+}
+
+module.exports = { uploadFile, downloadFile, deleteFile, listFiles, uploadFileDirect, createFolder, sanitizeName, getUniquePath, getKSTDateString };

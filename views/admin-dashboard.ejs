@@ -219,18 +219,6 @@
             </div>
           </div>
 
-          <!-- 파일 관리 (전체 너비) -->
-          <div style="grid-column: 1 / -1;">
-            <div class="card">
-              <div class="card-header">
-                <h3>&#128193; 파일 관리</h3>
-                <a href="<%= sectionPath %>/files" class="btn btn-sm btn-primary">파일 탐색기 열기</a>
-              </div>
-              <div class="card-body" id="dashFileSection">
-                <p class="empty-message">최근 파일을 불러오는 중...</p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </main>
@@ -295,77 +283,5 @@
 
   <script>window.__SEC='<%= sectionPath %>';window.__BASE='<%= basePath %>'</script>
   <script src="/js/app.js"></script>
-  <script>
-    // 대시보드 파일 관리 미니 위젯 (전체 드라이브 재귀 탐색)
-    (function() {
-      const section = document.getElementById('dashFileSection');
-      if (!section) return;
-
-      async function fetchAllFiles(prefix) {
-        const res = await fetch(window.__SEC + '/files/list?prefix=' + encodeURIComponent(prefix));
-        if (!res.ok) throw new Error('Failed');
-        const data = await res.json();
-        let allFiles = (data.files || []).map(f => ({ ...f, folder: prefix }));
-        const folders = data.prefixes || [];
-        for (const folder of folders) {
-          const sub = await fetchAllFiles(folder.fullPath);
-          allFiles = allFiles.concat(sub);
-        }
-        return allFiles;
-      }
-
-      async function loadRecentFiles() {
-        try {
-          const allFiles = await fetchAllFiles('');
-
-          if (allFiles.length === 0) {
-            section.innerHTML = '<p class="empty-message">업로드된 파일이 없습니다. <a href="<%= sectionPath %>/files">파일 탐색기</a>에서 업로드하세요.</p>';
-            return;
-          }
-
-          // 최근 10개 파일 표시
-          const recent = allFiles.sort((a, b) => new Date(b.updated) - new Date(a.updated)).slice(0, 10);
-
-          let html = '<div class="file-list">';
-          recent.forEach(f => {
-            const icon = f.contentType && f.contentType.startsWith('image/') ? '&#128444;' : '&#128196;';
-            const size = formatSize(f.size);
-            const date = f.updated ? new Date(f.updated).toLocaleDateString('ko-KR') : '';
-            const folder = f.folder ? '<span style="color:#94a3b8;font-size:0.75rem;">' + escapeHtml(f.folder) + '</span> ' : '';
-            html += '<div class="file-item">';
-            html += '  <div class="file-info">';
-            html += '    <span class="file-name">' + icon + ' ' + folder + escapeHtml(f.name) + '</span>';
-            html += '    <span class="file-date">' + size + ' | ' + date + '</span>';
-            html += '  </div>';
-            html += '</div>';
-          });
-          html += '</div>';
-
-          html += '<p style="margin-top:0.75rem;font-size:0.85rem;color:#64748b;">';
-          html += '총 ' + allFiles.length + '개 파일';
-          html += ' — <a href="<%= sectionPath %>/files">전체 보기</a></p>';
-
-          section.innerHTML = html;
-        } catch (err) {
-          section.innerHTML = '<p class="empty-message">파일 목록을 불러올 수 없습니다. <a href="<%= sectionPath %>/files">파일 탐색기</a></p>';
-        }
-      }
-
-      function formatSize(bytes) {
-        if (!bytes) return '0 B';
-        var units = ['B', 'KB', 'MB', 'GB'], i = 0, s = bytes;
-        while (s >= 1024 && i < units.length - 1) { s /= 1024; i++; }
-        return s.toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
-      }
-
-      function escapeHtml(str) {
-        var div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-      }
-
-      loadRecentFiles();
-    })();
-  </script>
 </body>
 </html>

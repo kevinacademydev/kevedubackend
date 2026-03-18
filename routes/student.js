@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const { sql } = require('../db/database');
-const { uploadFile, downloadFile, deleteFile } = require('../utils/drive');
+const { uploadFile, downloadFile, deleteFile, uploadFileDirect, sanitizeName, getUniquePath, getKSTDateString } = require('../utils/drive');
 
 // 학생 인증 미들웨어
 function requireStudent(req, res, next) {
@@ -161,9 +161,18 @@ router.post('/class/:classId/upload', requireStudent, (req, res) => {
         return res.status(403).json({ error: '등록되지 않은 수업입니다.' });
       }
 
+      // 수업 이름 조회
+      const clsRows = await sql`SELECT name FROM classes WHERE id = ${classId}`;
+      const className = clsRows.length > 0 ? sanitizeName(clsRows[0].name) : `class_${classId}`;
+      const dateStr = getKSTDateString();
+      const studentId = req.session.user.username; // e.g. student0001
+
       for (const file of req.files) {
         const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-        const driveFileId = await uploadFile(file.buffer, `hw-${req.session.user.username}-${Date.now()}-${originalName}`, file.mimetype);
+        const ext = require('path').extname(originalName).toLowerCase() || '.pdf';
+        const desiredPath = `uploads/class/${className}/hwuploads/${dateStr}${studentId}${ext}`;
+        const uniquePath = await getUniquePath(desiredPath);
+        const driveFileId = await uploadFileDirect(file.buffer, uniquePath, file.mimetype);
         await sql`INSERT INTO submissions (class_id, student_id, file_name, file_path) VALUES (${classId}, ${userId}, ${originalName}, ${driveFileId})`;
       }
 

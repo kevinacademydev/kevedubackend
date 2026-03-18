@@ -192,12 +192,16 @@
                     <% }) %>
                   </div>
                 <% } %>
-                <div style="margin-top:0.75rem;">
-                  <label class="btn btn-sm btn-outline" style="cursor:pointer;">
-                    교재 업로드
-                    <input type="file" id="textbookFileInput" accept=".pdf" style="display:none;">
-                  </label>
-                  <span id="textbookUploadResult" style="margin-left:0.5rem;font-size:0.85rem;"></span>
+                <div class="dropzone" id="textbookDropzone" style="margin-top:0.75rem;padding:1.25rem;border:2px dashed #cbd5e1;border-radius:10px;text-align:center;color:#94a3b8;cursor:pointer;transition:all 0.2s;">
+                  <p style="margin:0;font-size:0.85rem;">교재 파일을 여기에 드래그하거나 클릭하세요</p>
+                  <p style="margin:0.25rem 0 0;font-size:0.75rem;color:#94a3b8;">PDF (최대 10개, 각 50MB)</p>
+                  <input type="file" id="textbookFileInput" accept=".pdf" multiple style="display:none;">
+                </div>
+                <div id="textbookProgress" style="display:none;margin-top:0.5rem;">
+                  <div style="height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
+                    <div id="textbookProgressFill" style="height:100%;background:#2563eb;width:0%;transition:width 0.3s;"></div>
+                  </div>
+                  <span id="textbookUploadResult" style="font-size:0.8rem;color:#64748b;margin-top:0.25rem;display:block;"></span>
                 </div>
               </div>
             </div>

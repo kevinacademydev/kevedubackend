@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const { sql, canAccessClass, getTeacherClassIds, getTeacherStudentIds } = require('../db/database');
 const { notifyGradingComplete } = require('../utils/sms');
 const { notifyGradingCompleteEmail } = require('../utils/email');
-const { uploadFile, downloadFile, deleteFile, listFiles, uploadFileDirect, createFolder } = require('../utils/drive');
+const { uploadFile, downloadFile, deleteFile, listFiles, uploadFileDirect, createFolder, sanitizeName, getUniquePath, getKSTDateString } = require('../utils/drive');
 
 // Helper: admin 또는 subadmin인지 체크
 function isAdminLike(role) {
@@ -641,24 +641,38 @@ router.post('/class/:id/notes', requireAdmin, async (req, res) => {
   }
 });
 
-// POST /admin/class/:id/textbook - 교재 업로드
+// POST /admin/class/:id/textbook - 교재 업로드 (복수 파일 지원)
 router.post('/class/:id/textbook', requireAdmin, (req, res) => {
   const classId = parseInt(req.params.id, 10);
   const userId = req.session.user.id;
 
-  upload.single('file')(req, res, async (err) => {
-    if (err) return res.status(400).json({ error: err.message });
-    if (!req.file) return res.status(400).json({ error: '파일을 선택해주세요.' });
+  upload.array('files', 10)(req, res, async (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_UNEXPECTED_FILE') {
+        return res.status(400).json({ error: '최대 10개 파일까지 업로드 가능합니다.' });
+      }
+      return res.status(400).json({ error: err.message });
+    }
+    if (!req.files || req.files.length === 0) return res.status(400).json({ error: '파일을 선택해주세요.' });
 
     try {
       if (!(await canAccessClass(userId, req.session.user.role, classId))) {
         return res.status(403).json({ error: '접근 권한이 없습니다.' });
       }
 
-      const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
-      const driveFileId = await uploadFile(req.file.buffer, `textbook-${classId}-${Date.now()}-${originalName}`, req.file.mimetype);
-      await sql`INSERT INTO class_textbooks (class_id, uploaded_by, file_name, file_path) VALUES (${classId}, ${userId}, ${originalName}, ${driveFileId})`;
-      res.json({ success: true });
+      // 수업 이름 조회
+      const clsRows = await sql`SELECT name FROM classes WHERE id = ${classId}`;
+      const className = clsRows.length > 0 ? sanitizeName(clsRows[0].name) : `class_${classId}`;
+
+      for (const file of req.files) {
+        const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+        const desiredPath = `uploads/class/${className}/classmaterial/${originalName}`;
+        const uniquePath = await getUniquePath(desiredPath);
+        const driveFileId = await uploadFileDirect(file.buffer, uniquePath, file.mimetype);
+        await sql`INSERT INTO class_textbooks (class_id, uploaded_by, file_name, file_path) VALUES (${classId}, ${userId}, ${originalName}, ${driveFileId})`;
+      }
+
+      res.json({ success: true, count: req.files.length });
     } catch (uploadErr) {
       console.error('Textbook upload error:', uploadErr);
       res.status(500).json({ error: '파일 업로드에 실패했습니다.' });
@@ -956,6 +970,11 @@ router.post('/class/:id/upload', requireAdmin, async (req, res) => {
         JOIN users u ON ce.student_id = u.id
         WHERE ce.class_id = ${classId} AND ce.status = 'active'`;
 
+      // 수업 이름 조회
+      const clsRows = await sql`SELECT name FROM classes WHERE id = ${classId}`;
+      const className = clsRows.length > 0 ? sanitizeName(clsRows[0].name) : `class_${classId}`;
+      const dateStr = getKSTDateString();
+
       const results = [];
 
       for (const file of req.files) {
@@ -982,7 +1001,10 @@ router.post('/class/:id/upload', requireAdmin, async (req, res) => {
 
         if (matchedStudents.length === 1) {
           const student = matchedStudents[0];
-          const driveFileId = await uploadFile(file.buffer, `graded-${student.username}-${Date.now()}-${originalName}`, file.mimetype);
+          const ext = path.extname(originalName).toLowerCase() || '.pdf';
+          const desiredPath = `uploads/class/${className}/hwfeedback/${dateStr}${student.username}${ext}`;
+          const uniquePath = await getUniquePath(desiredPath);
+          const driveFileId = await uploadFileDirect(file.buffer, uniquePath, file.mimetype);
 
           await sql`INSERT INTO graded_files (class_id, student_id, uploaded_by, file_name, file_path, is_new) VALUES (${classId}, ${student.id}, ${uploaderId}, ${originalName}, ${driveFileId}, 1)`;
 
@@ -1700,10 +1722,11 @@ router.post('/schedule-pages/:id/profile-image', requireAdmin, profileUpload.sin
 
     if (!req.file) return res.status(400).json({ error: '이미지 파일이 필요합니다.' });
 
-    // Upload to GCS (sanitize filename to ASCII to avoid encoding issues)
+    // Upload to GCS — uploads/schedule/profile/{slug}.{ext}
     const ext = path.extname(req.file.originalname).toLowerCase() || '.png';
-    const safeName = 'profile-' + pageId + ext;
-    const filePath = await uploadFile(req.file.buffer, safeName, req.file.mimetype);
+    const desiredPath = `uploads/schedule/profile/${sanitizeName(page.slug)}${ext}`;
+    const uniquePath = await getUniquePath(desiredPath);
+    const filePath = await uploadFileDirect(req.file.buffer, uniquePath, req.file.mimetype);
 
     // Update header_data with profileImageId
     const headerData = JSON.parse(page.header_data || '{}');
