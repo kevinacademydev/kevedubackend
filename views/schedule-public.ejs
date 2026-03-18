@@ -87,13 +87,46 @@
   </div>
 </section>
 
-<!-- Schedule Section (Multi-schedule support) -->
+<!-- Schedule Section (sections→slots based rendering) -->
 <%
-  let schedules = [];
-  if (sd.schedules && sd.schedules.length > 0) {
-    schedules = sd.schedules;
-  } else if (sd.days && sd.days.length > 0 && sd.blocks && sd.blocks.length > 0) {
-    schedules = [{ title: null, dateRange: null, days: sd.days, blocks: sd.blocks }];
+  let schedules = sd.schedules || [];
+  const allSections = sd.sections || [];
+  // Fallback for very old v1 format (sd.days + sd.blocks without schedules array)
+  if (!schedules.length && sd.days && sd.days.length > 0 && sd.blocks && sd.blocks.length > 0) {
+    schedules = [{ id: 'legacy', title: null, dateRange: null, days: sd.days, blocks: sd.blocks }];
+  }
+
+  // Build slot blocks from sections for each schedule (v3)
+  // Falls back to old blocks[] format for unmigrated pages
+  function buildSlotBlocks(sched) {
+    // v3: sections→slots
+    if (allSections.length > 0) {
+      const blocks = [];
+      allSections.forEach(sec => {
+        (sec.slots || []).forEach(slot => {
+          if (slot.scheduleId === sched.id) {
+            blocks.push({
+              day: slot.day,
+              start: slot.start,
+              end: slot.end,
+              color: sec.color || '#3498DB',
+              name: sec.name,
+              subjectId: sec.subjectId || ''
+            });
+          }
+        });
+      });
+      return blocks;
+    }
+    // Fallback: old blocks[] on schedule (v1/v2)
+    return (sched.blocks || []).map(b => ({
+      day: b.day,
+      start: b.start,
+      end: b.end,
+      color: b.color || '#3498DB',
+      name: b.subject || { ko: '', en: '' },
+      subjectId: b.subjectId || ''
+    }));
   }
 %>
 <% if (schedules.length > 0) { %>
@@ -102,7 +135,7 @@
     <h2 class="sp-section-title" style="color: <%= theme.heroBg || '#1a1a2e' %>;">시간표</h2>
 
     <% schedules.forEach((sched, schedIdx) => {
-      const schedBlocks = sched.blocks || [];
+      const schedBlocks = buildSlotBlocks(sched);
       const schedDays = sched.days || [];
       if (schedDays.length === 0 || schedBlocks.length === 0) return;
 
@@ -164,7 +197,7 @@
                   %>
                     <div class="sp-tt-block<%= block.subjectId ? ' sp-tt-block-clickable' : '' %>" data-subject-id="<%= block.subjectId || '' %>" style="top:<%= topPx %>px;height:<%= heightPx %>px;background: linear-gradient(<%= block.color %>22, <%= block.color %>22), #fff;border:2px solid <%= block.color %>;<%= block.subjectId ? 'cursor:pointer;' : '' %>">
                       <div class="sp-tt-block-name" style="color:<%= block.color %>;">
-                        <%= t(block.subject, 'ko') %>
+                        <%= t(block.name, 'ko') %>
                       </div>
                       <div class="sp-tt-block-time"><%= block.start %> - <%= block.end %></div>
                     </div>

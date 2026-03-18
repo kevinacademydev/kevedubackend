@@ -1456,24 +1456,25 @@ function initScheduleEditorPage() {
       classApplicationUrl: ''
     },
     schedule_data: {
-      version: 2,
+      version: 3,
       subjects: [],
+      sections: [],
       schedules: [{
         id: 's_' + Date.now(),
         title: { ko: '시간표', en: 'Schedule' },
         dateRange: { start: '', end: '' },
-        days: ['월','화','수','목','금'],
-        blocks: []
+        days: ['월','화','수','목','금']
       }]
     },
     syllabus_data: { subjects: [] },
     theme_data: { heroBg: '#133327', accent: '#ffffff' }
   };
 
-  // Generate unique subject ID
+  // Generate unique IDs
   function genSubjectId() { return 'subj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); }
+  function genSectionId() { return 'sec_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); }
 
-  // Migrate old data to bilingual format + multi-schedule + v2 subject system
+  // Migrate old data to v3 sections-based format
   function migrateData() {
     const hd = state.header_data;
     hd.programTitle = toBi(hd.programTitle);
@@ -1485,8 +1486,9 @@ function initScheduleEditorPage() {
     }));
     hd.highlights = (hd.highlights || []).map(h => toBi(h));
 
-    // Migrate old single-schedule format to multi-schedule
     const sd = state.schedule_data;
+
+    // Step 1: Normalize to multi-schedule with blocks (old v1 → v2 intermediate)
     if (!sd.schedules) {
       const oldDays = sd.days || ['월','화','수','목','금'];
       const oldBlocks = (sd.blocks || []).map(b => ({ ...b, subject: toBi(b.subject) }));
@@ -1500,66 +1502,43 @@ function initScheduleEditorPage() {
       delete sd.days;
       delete sd.blocks;
     } else {
-      // Ensure all schedules have bilingual block subjects
       sd.schedules.forEach(sched => {
         sched.title = toBi(sched.title);
-        sched.blocks = (sched.blocks || []).map(b => ({ ...b, subject: toBi(b.subject) }));
+        if (sched.blocks) {
+          sched.blocks = sched.blocks.map(b => ({ ...b, subject: toBi(b.subject) }));
+        }
         if (!sched.dateRange) sched.dateRange = { start: '', end: '' };
       });
     }
 
-    // --- V2 migration: extract subjects from blocks ---
     if (!sd.subjects) sd.subjects = [];
-    if (!sd.version || sd.version < 2) {
-      // Parse block name → { baseName, section }
-      // "AMC 10 이론수업 A" → { baseName: "AMC 10", section: "이론수업 A" }
-      // "AMC 10 이론수업 (ZOOM)" → { baseName: "AMC 10", section: "이론수업 Zoom" }
-      // "Algebra I (AOPS)" → { baseName: "Algebra I", section: "AOPS" }
-      // "AP Calculus BC" → { baseName: "AP Calculus BC", section: "" }
+
+    // Step 2: If still v1/v2 with blocks, extract subjects first
+    const hasBlocks = sd.schedules.some(s => s.blocks && s.blocks.length > 0);
+    if (hasBlocks && (!sd.version || sd.version < 2)) {
       function parseBlockName(name) {
         let base = (name || '').trim();
         let section = '';
-
-        // 1) Extract trailing parenthetical: "Algebra I (AOPS)" → base "Algebra I", section "AOPS"
         const parenMatch = base.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
-        if (parenMatch) {
-          base = parenMatch[1].trim();
-          section = parenMatch[2].trim();
-        }
-
-        // 2) Extract trailing single uppercase letter: "AMC 10 이론수업 A" → section "A"
+        if (parenMatch) { base = parenMatch[1].trim(); section = parenMatch[2].trim(); }
         if (!section) {
           const letterMatch = base.match(/^(.+?)\s+([A-Z])\s*$/);
-          if (letterMatch) {
-            base = letterMatch[1].trim();
-            section = letterMatch[2];
-          }
+          if (letterMatch) { base = letterMatch[1].trim(); section = letterMatch[2]; }
         }
-
-        // 3) Extract "이론수업" / "Theory" — move to section prefix
         const thMatch = base.match(/^(.+?)\s*(이론수업|Theory)\s*$/i);
-        if (thMatch) {
-          const prefix = thMatch[2]; // "이론수업" or "Theory"
-          base = thMatch[1].trim();
-          section = section ? prefix + ' ' + section : '';
-        }
-
+        if (thMatch) { base = thMatch[1].trim(); section = section ? thMatch[2] + ' ' + section : ''; }
         return { baseName: base, section };
       }
-
-      // Build subject registry: group by baseName (no color — color stays on block)
-      const baseMap = {}; // baseName -> { id, name }
+      const baseMap = {};
       sd.schedules.forEach(sched => {
         (sched.blocks || []).forEach(b => {
-          if (b.subjectId) return; // already migrated
+          if (b.subjectId) return;
           const nameKo = (typeof b.subject === 'object' ? b.subject.ko : b.subject) || '';
           const nameEn = (typeof b.subject === 'object' ? b.subject.en : '') || '';
-
           const parsedKo = parseBlockName(nameKo);
           const parsedEn = parseBlockName(nameEn);
           const baseKey = parsedKo.baseName || parsedEn.baseName;
           if (!baseKey) return;
-
           if (!baseMap[baseKey]) {
             const id = genSubjectId();
             baseMap[baseKey] = { id, name: { ko: parsedKo.baseName, en: parsedEn.baseName || parsedKo.baseName } };
@@ -1567,19 +1546,48 @@ function initScheduleEditorPage() {
           }
           b.subjectId = baseMap[baseKey].id;
           b.sectionLabel = parsedKo.section || parsedEn.section || '';
-          // b.color stays as-is (block's own color)
         });
       });
-      sd.version = 2;
     }
 
-    // Ensure every block has subjectId fields (defensive)
-    sd.schedules.forEach(sched => {
-      (sched.blocks || []).forEach(b => {
-        if (!b.subjectId) b.subjectId = '';
-        if (!('sectionLabel' in b)) b.sectionLabel = '';
+    // Step 3: Convert blocks → sections (v2 → v3)
+    if (hasBlocks && (!sd.version || sd.version < 3)) {
+      if (!sd.sections) sd.sections = [];
+      // Group blocks by (subjectId + color + sectionLabel) within each schedule → one section
+      const sectionMap = {}; // key → section
+      sd.schedules.forEach(sched => {
+        const schedId = sched.id;
+        (sched.blocks || []).forEach(b => {
+          const key = (b.subjectId || '') + '|' + (b.color || '#3498DB') + '|' + (b.sectionLabel || '') + '|' + (typeof b.subject === 'object' ? (b.subject.ko || '') : (b.subject || ''));
+          if (!sectionMap[key]) {
+            const secId = genSectionId();
+            sectionMap[key] = {
+              id: secId,
+              subjectId: b.subjectId || '',
+              name: typeof b.subject === 'object' ? { ko: b.subject.ko || '', en: b.subject.en || '' } : toBi(b.subject),
+              color: b.color || '#3498DB',
+              classId: null,
+              slots: []
+            };
+          }
+          sectionMap[key].slots.push({
+            scheduleId: schedId,
+            day: b.day,
+            start: b.start,
+            end: b.end
+          });
+        });
+        delete sched.blocks;
       });
-    });
+      sd.sections = Object.values(sectionMap);
+      sd.version = 3;
+    }
+
+    // Ensure sections array exists
+    if (!sd.sections) sd.sections = [];
+    // Clean blocks from schedules (defensive)
+    sd.schedules.forEach(sched => { delete sched.blocks; });
+    sd.version = 3;
 
     // Syllabus subjects - migrate to bilingual + link to subject registry
     const syllSubjects = state.syllabus_data.subjects || [];
@@ -1599,22 +1607,20 @@ function initScheduleEditorPage() {
     // Link unlinked syllabus subjects to registry by name matching
     const regSubjects = sd.subjects || [];
     state.syllabus_data.subjects.forEach(syllSubj => {
-      if (syllSubj.subjectId) return; // already linked
+      if (syllSubj.subjectId) return;
       const nameKo = syllSubj.name.ko || '';
       const nameEn = syllSubj.name.en || '';
       const match = regSubjects.find(rs =>
         (nameKo && rs.name.ko === nameKo) || (nameEn && rs.name.en === nameEn)
       );
-      if (match) {
-        syllSubj.subjectId = match.id;
-      }
+      if (match) syllSubj.subjectId = match.id;
     });
 
-    // Remove duplicate syllabus subjects (keep the one with more content)
+    // Remove duplicate syllabus subjects
     const seenIds = new Set();
     state.syllabus_data.subjects = state.syllabus_data.subjects.filter(s => {
-      if (!s.subjectId) return true; // keep unlinked
-      if (seenIds.has(s.subjectId)) return false; // duplicate
+      if (!s.subjectId) return true;
+      if (seenIds.has(s.subjectId)) return false;
       seenIds.add(s.subjectId);
       return true;
     });
@@ -1632,50 +1638,18 @@ function initScheduleEditorPage() {
   }
 
   // Calculate session count for a subject (for syllabus weeklyPlan length)
+  // Based on sections[].slots[] — count max slots across parallel sections for same subject
   function calculateSessionCount(subjectId) {
     const sd = state.schedule_data;
-    // Group blocks by (sectionLabel, scheduleIndex)
-    // sectionLabel="" means single/continuous → sum across schedules
-    // sectionLabel="A","B","Zoom" → parallel sections → max
-    const sectionCounts = {}; // "sectionLabel" -> [count_per_schedule]
-    sd.schedules.forEach((sched, si) => {
-      const blocks = (sched.blocks || []).filter(b => b.subjectId === subjectId);
-      const bySection = {};
-      blocks.forEach(b => {
-        const label = b.sectionLabel || '';
-        bySection[label] = (bySection[label] || 0) + 1;
-      });
-      Object.entries(bySection).forEach(([label, count]) => {
-        if (!sectionCounts[label]) sectionCounts[label] = [];
-        sectionCounts[label].push({ si, count });
-      });
+    const sections = (sd.sections || []).filter(s => s.subjectId === subjectId);
+    if (!sections.length) return 0;
+    // Each section is a parallel offering; take max slot count
+    let maxSlots = 0;
+    sections.forEach(sec => {
+      const count = (sec.slots || []).length;
+      if (count > maxSlots) maxSlots = count;
     });
-
-    const labels = Object.keys(sectionCounts);
-    if (!labels.length) return 0;
-
-    // If only one label (no named sections or single section)
-    if (labels.length === 1) {
-      const label = labels[0];
-      const entries = sectionCounts[label];
-      if (label === '') {
-        // No section label → continuous across sessions → sum
-        return entries.reduce((sum, e) => sum + e.count, 0);
-      } else {
-        // Single named section → sum if same label across schedules (continuous)
-        return entries.reduce((sum, e) => sum + e.count, 0);
-      }
-    }
-
-    // Multiple section labels → parallel sections
-    // For each section, sum its counts across schedules (continuous within that section)
-    // Then take max across all sections
-    let maxCount = 0;
-    labels.forEach(label => {
-      const total = sectionCounts[label].reduce((sum, e) => sum + e.count, 0);
-      if (total > maxCount) maxCount = total;
-    });
-    return maxCount;
+    return maxSlots;
   }
 
   // Get subject registry entry by id
@@ -1850,6 +1824,20 @@ function initScheduleEditorPage() {
   // ===== Multi-schedule rendering =====
   let activeScheduleIdx = 0;
 
+  // Get sections with slots for a given schedule
+  function getSlotsForSchedule(schedId) {
+    const sections = state.schedule_data.sections || [];
+    const result = [];
+    sections.forEach(sec => {
+      (sec.slots || []).forEach(slot => {
+        if (slot.scheduleId === schedId) {
+          result.push({ ...slot, sectionId: sec.id, color: sec.color, name: sec.name });
+        }
+      });
+    });
+    return result;
+  }
+
   function renderScheduleList() {
     const container = document.getElementById('seScheduleList');
     const schedules = state.schedule_data.schedules || [];
@@ -1880,35 +1868,79 @@ function initScheduleEditorPage() {
         html += `<label><input type="checkbox" value="${d}" data-si="${si}" ${checkedDays.includes(d) ? 'checked' : ''}> ${d}</label>`;
       });
       html += `</div>`;
-      html += renderBlockGridHTML(si);
+
+      // Section list for this schedule
+      html += renderSectionListHTML(si);
+      // Read-only grid from sections→slots
+      html += renderSlotGridHTML(si);
       html += `</div>`;
     });
     container.innerHTML = html;
     wireScheduleCardEvents();
   }
 
-  function renderBlockGridHTML(si) {
+  // Render section cards for a schedule
+  function renderSectionListHTML(si) {
+    const sched = state.schedule_data.schedules[si];
+    const sections = state.schedule_data.sections || [];
+    // Filter sections that have slots in this schedule
+    const relevantSections = sections.filter(sec =>
+      (sec.slots || []).some(slot => slot.scheduleId === sched.id)
+    );
+
+    let html = '<div class="se-section-list">';
+    if (relevantSections.length === 0) {
+      html += '<p class="empty-message" style="padding:0.25rem 0;font-size:0.82rem;">분반이 없습니다.</p>';
+    } else {
+      relevantSections.forEach(sec => {
+        const slotCount = sec.slots.filter(s => s.scheduleId === sched.id).length;
+        const slotSummary = sec.slots.filter(s => s.scheduleId === sched.id)
+          .map(s => `${s.day} ${s.start}-${s.end}`).join(', ');
+        html += `<div class="se-section-card" data-section-id="${sec.id}" data-si="${si}">
+          <span class="se-section-dot" style="background:${sec.color};"></span>
+          <span class="se-section-card-name">${esc(t(sec.name))}</span>
+          <span class="se-section-card-slots">${esc(slotSummary)}</span>
+        </div>`;
+      });
+    }
+    html += `<button class="btn btn-sm btn-outline se-add-section" data-si="${si}" style="margin-top:0.4rem;">+ 분반 추가</button>`;
+    html += '</div>';
+    return html;
+  }
+
+  // Read-only timetable grid from sections→slots
+  function renderSlotGridHTML(si) {
     const sched = state.schedule_data.schedules[si];
     const days = sched.days || [];
     if (!days.length) return '<p class="empty-message" style="padding:0.5rem;">요일을 먼저 선택해주세요.</p>';
 
-    const blocks = sched.blocks || [];
+    const sections = state.schedule_data.sections || [];
+    // Collect all slot-blocks for this schedule
+    const slotBlocks = [];
+    sections.forEach(sec => {
+      (sec.slots || []).forEach(slot => {
+        if (slot.scheduleId === sched.id) {
+          slotBlocks.push({ ...slot, sectionId: sec.id, color: sec.color, name: sec.name, subjectId: sec.subjectId });
+        }
+      });
+    });
+
+    if (!slotBlocks.length) return '';
+
     let html = '<div class="se-block-grid"><div class="se-block-columns">';
     days.forEach(day => {
-      const dayBlocks = blocks
-        .map((b, i) => ({ ...b, _idx: i }))
+      const daySlots = slotBlocks
         .filter(b => b.day === day)
         .sort((a, b) => a.start.localeCompare(b.start));
 
       html += `<div class="se-block-col"><div class="se-block-col-header">${day}</div><div class="se-block-col-body">`;
-      dayBlocks.forEach(b => {
-        const subjText = t(b.subject);
-        html += `<div class="se-block-card" data-idx="${b._idx}" data-si="${si}" style="background:${b.color}15;border-left:3px solid ${b.color};">
-          <div class="se-block-card-subj" style="color:${b.color};">${esc(subjText)}</div>
+      daySlots.forEach(b => {
+        html += `<div class="se-block-card" data-section-id="${b.sectionId}" data-si="${si}" style="background:${b.color}15;border-left:3px solid ${b.color};">
+          <div class="se-block-card-subj" style="color:${b.color};">${esc(t(b.name))}</div>
           <div class="se-block-card-time">${esc(b.start)} - ${esc(b.end)}</div>
         </div>`;
       });
-      html += `</div><button class="se-block-add" data-day="${day}" data-si="${si}">+ 추가</button></div>`;
+      html += `</div></div>`;
     });
     html += '</div></div>';
     return html;
@@ -1918,7 +1950,6 @@ function initScheduleEditorPage() {
     // Days checkbox change
     document.querySelectorAll('.se-days-check input[type="checkbox"]').forEach(cb => {
       cb.addEventListener('change', () => {
-        const si = parseInt(cb.dataset.si);
         collectAllScheduleStates();
         renderScheduleList();
         markDirty();
@@ -1939,26 +1970,43 @@ function initScheduleEditorPage() {
         const si = parseInt(btn.dataset.si);
         if (!confirm('이 시간표를 삭제하시겠습니까?')) return;
         collectAllScheduleStates();
+        const schedId = state.schedule_data.schedules[si].id;
+        // Remove slots that reference this schedule from all sections
+        (state.schedule_data.sections || []).forEach(sec => {
+          sec.slots = (sec.slots || []).filter(s => s.scheduleId !== schedId);
+        });
+        // Remove sections with no slots left
+        state.schedule_data.sections = (state.schedule_data.sections || []).filter(s => s.slots.length > 0);
         state.schedule_data.schedules.splice(si, 1);
         renderScheduleList();
+        syncSyllabus();
         markDirty();
       });
     });
 
-    // Block cards click
-    document.querySelectorAll('.se-block-card').forEach(card => {
+    // Block cards click → open section popup
+    document.querySelectorAll('.se-block-card[data-section-id]').forEach(card => {
       card.addEventListener('click', () => {
         const si = parseInt(card.dataset.si);
-        const idx = parseInt(card.dataset.idx);
-        openBlockPopup(idx, null, si);
+        const sectionId = card.dataset.sectionId;
+        openSectionPopup(sectionId, si);
       });
     });
 
-    // Block add buttons
-    document.querySelectorAll('.se-block-add').forEach(btn => {
+    // Section cards click → open section popup
+    document.querySelectorAll('.se-section-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const si = parseInt(card.dataset.si);
+        const sectionId = card.dataset.sectionId;
+        openSectionPopup(sectionId, si);
+      });
+    });
+
+    // Add section buttons
+    document.querySelectorAll('.se-add-section').forEach(btn => {
       btn.addEventListener('click', () => {
         const si = parseInt(btn.dataset.si);
-        openBlockPopup(null, btn.dataset.day, si);
+        openSectionPopup(null, si);
       });
     });
   }
@@ -1976,18 +2024,13 @@ function initScheduleEditorPage() {
   function collectAllScheduleStates() {
     const schedules = state.schedule_data.schedules || [];
     schedules.forEach((sched, si) => {
-      // Title
       const titleInp = document.querySelector(`.se-sched-title-input[data-si="${si}"]`);
       if (titleInp) sched.title[editLang] = titleInp.value;
-
-      // Date range
       const startInp = document.querySelector(`.se-sched-date-start[data-si="${si}"]`);
       const endInp = document.querySelector(`.se-sched-date-end[data-si="${si}"]`);
       if (!sched.dateRange) sched.dateRange = { start: '', end: '' };
       if (startInp) sched.dateRange.start = startInp.value;
       if (endInp) sched.dateRange.end = endInp.value;
-
-      // Days
       collectScheduleCardDays(si);
     });
   }
@@ -2001,137 +2044,195 @@ function initScheduleEditorPage() {
       id: 's_' + Date.now(),
       title: { ko: `${schedules.length + 1}주차`, en: `Week ${schedules.length + 1}` },
       dateRange: { start: '', end: '' },
-      days: ['월','화','수','목','금'],
-      blocks: []
+      days: ['월','화','수','목','금']
     });
     renderScheduleList();
     markDirty();
   });
 
-  // Block popup
-  let editingBlockIdx = null;
-  let editingBlockDay = null;
+  // ===== Section popup (분반 편집) =====
+  let editingSectionId = null;
   const popup = document.getElementById('seBlockPopup');
-  const blockSubjectSelect = document.getElementById('seBlockSubjectSelect');
-  const blockSectionInput = document.getElementById('seBlockSection');
-  const blockSubjectInput = document.getElementById('seBlockSubject');
-  const blockStartInput = document.getElementById('seBlockStart');
-  const blockEndInput = document.getElementById('seBlockEnd');
-  const blockColorsWrap = document.getElementById('seBlockColors');
-  const blockDeleteBtn = document.getElementById('seBlockDelete');
-  const popupTitle = document.getElementById('sePopupTitle');
 
-  blockColorsWrap.innerHTML = SWATCHES.map(c => `<span class="se-swatch" data-color="${c}" style="background:${c};" tabindex="0"></span>`).join('');
-  let selectedColor = SWATCHES[0];
-  blockColorsWrap.querySelectorAll('.se-swatch').forEach(sw => {
-    sw.addEventListener('click', () => {
-      blockColorsWrap.querySelectorAll('.se-swatch').forEach(s => s.classList.remove('active'));
-      sw.classList.add('active');
-      selectedColor = sw.dataset.color;
-    });
-  });
-
-  // Populate subject dropdown from registry
-  function populateSubjectDropdown(selectedSubjId) {
-    const subjects = state.schedule_data.subjects || [];
-    blockSubjectSelect.innerHTML = '<option value="">-- 과목 선택 --</option>';
-    subjects.forEach(s => {
-      const opt = document.createElement('option');
-      opt.value = s.id;
-      opt.textContent = t(s.name) || '(이름 없음)';
-      if (s.id === selectedSubjId) opt.selected = true;
-      blockSubjectSelect.appendChild(opt);
-    });
-  }
-
-  // Subject dropdown change — no auto-color, color is block-level
-
-  function openBlockPopup(idx, day, schedIdx) {
+  function openSectionPopup(sectionId, schedIdx) {
     activeScheduleIdx = schedIdx;
-    editingBlockIdx = idx;
+    editingSectionId = sectionId;
     const sched = state.schedule_data.schedules[schedIdx];
+    const sections = state.schedule_data.sections || [];
+    const sec = sectionId ? sections.find(s => s.id === sectionId) : null;
 
-    if (idx !== null) {
-      const b = sched.blocks[idx];
-      editingBlockDay = b.day;
-      populateSubjectDropdown(b.subjectId || '');
-      blockSectionInput.value = b.sectionLabel || '';
-      blockSubjectInput.value = t(b.subject);
-      blockStartInput.value = b.start;
-      blockEndInput.value = b.end;
-      selectedColor = b.color;
-      blockDeleteBtn.style.display = '';
-      popupTitle.textContent = '수업 편집';
-    } else {
-      editingBlockDay = day;
-      populateSubjectDropdown('');
-      blockSectionInput.value = '';
-      blockSubjectInput.value = '';
-      blockStartInput.value = '09:00';
-      blockEndInput.value = '10:00';
-      selectedColor = SWATCHES[0];
-      blockDeleteBtn.style.display = 'none';
-      popupTitle.textContent = `${day}요일 수업 추가`;
-    }
-    blockColorsWrap.querySelectorAll('.se-swatch').forEach(s => {
-      s.classList.toggle('active', s.dataset.color === selectedColor);
+    // Build popup HTML dynamically
+    const subjects = state.schedule_data.subjects || [];
+    const allDays = ['월','화','수','목','금','토','일'];
+
+    let subjectOptions = '<option value="">-- 과목 선택 (선택) --</option>';
+    subjects.forEach(s => {
+      const sel = sec && sec.subjectId === s.id ? 'selected' : '';
+      subjectOptions += `<option value="${s.id}" ${sel}>${esc(t(s.name)) || '(이름 없음)'}</option>`;
     });
-    popup.style.display = 'flex';
-    blockSubjectInput.focus();
-  }
 
-  document.getElementById('seBlockOk').addEventListener('click', () => {
-    const subjectVal = blockSubjectInput.value.trim();
-    if (!subjectVal) { blockSubjectInput.focus(); return; }
+    let classOptions = '<option value="">-- 수업 연결 안 함 --</option>';
+    (window.__classesList || []).forEach(c => {
+      const sel = sec && sec.classId == c.id ? 'selected' : '';
+      classOptions += `<option value="${c.id}" ${sel}>${esc(c.name)}</option>`;
+    });
 
-    const subjId = blockSubjectSelect.value || '';  // optional, for syllabus link
-    const sectionLabel = blockSectionInput.value.trim();
-
-    const sched = state.schedule_data.schedules[activeScheduleIdx];
-    if (!sched.blocks) sched.blocks = [];
-
-    if (editingBlockIdx !== null) {
-      const existing = sched.blocks[editingBlockIdx];
-      existing.subjectId = subjId;
-      existing.sectionLabel = sectionLabel;
-      existing.subject[editLang] = subjectVal;
-      existing.start = blockStartInput.value;
-      existing.end = blockEndInput.value;
-      existing.color = selectedColor;
-      existing.day = editingBlockDay;
-    } else {
-      const subjectBi = { ko: '', en: '' };
-      subjectBi[editLang] = subjectVal;
-      sched.blocks.push({
-        day: editingBlockDay,
-        start: blockStartInput.value,
-        end: blockEndInput.value,
-        subjectId: subjId,
-        sectionLabel: sectionLabel,
-        subject: subjectBi,
-        color: selectedColor
+    const slotsForSched = sec ? (sec.slots || []).filter(s => s.scheduleId === sched.id) : [];
+    let slotsHTML = '';
+    if (sec) {
+      slotsForSched.forEach((slot, i) => {
+        let dayOpts = allDays.map(d => `<option value="${d}" ${slot.day === d ? 'selected' : ''}>${d}</option>`).join('');
+        slotsHTML += `<div class="se-slot-row" data-slot-idx="${i}">
+          <select class="se-slot-day">${dayOpts}</select>
+          <input type="time" class="se-slot-start" value="${slot.start}">
+          <span>~</span>
+          <input type="time" class="se-slot-end" value="${slot.end}">
+          <button class="se-slot-remove" data-slot-idx="${i}">&times;</button>
+        </div>`;
       });
     }
-    popup.style.display = 'none';
-    collectAllScheduleStates();
-    renderScheduleList();
-    syncSyllabus();
-    markDirty();
-  });
 
-  blockDeleteBtn.addEventListener('click', () => {
-    if (editingBlockIdx !== null) {
-      collectAllScheduleStates();
-      state.schedule_data.schedules[activeScheduleIdx].blocks.splice(editingBlockIdx, 1);
+    const swatchesHTML = SWATCHES.map(c => {
+      const active = (sec ? sec.color : SWATCHES[0]) === c ? 'active' : '';
+      return `<span class="se-swatch ${active}" data-color="${c}" style="background:${c};" tabindex="0"></span>`;
+    }).join('');
+
+    const inner = popup.querySelector('.se-cell-popup-inner');
+    inner.innerHTML = `
+      <div class="se-popup-title">${sec ? '분반 편집' : '분반 추가'}</div>
+      <div class="form-group" style="margin-bottom:0.5rem;">
+        <label>분반명</label>
+        <input type="text" id="seSecName" placeholder="AMC 10 이론수업 Zoom" value="${sec ? esc(t(sec.name)) : ''}">
+      </div>
+      <div class="form-row" style="margin-bottom:0.5rem;">
+        <div class="form-group" style="flex:1;">
+          <label>실라버스 연결 <small style="color:var(--gray-500);font-weight:400;">(선택)</small></label>
+          <select id="seSecSubject" class="se-block-subject-select">${subjectOptions}</select>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>수업 연결 <small style="color:var(--gray-500);font-weight:400;">(선택)</small></label>
+          <select id="seSecClass" class="se-block-subject-select">${classOptions}</select>
+        </div>
+      </div>
+      <div style="margin-bottom:0.75rem;">
+        <label style="font-size:0.85rem;font-weight:600;color:var(--gray-700);display:block;margin-bottom:0.35rem;">색상</label>
+        <div class="se-color-swatches" id="seSecColors">${swatchesHTML}</div>
+      </div>
+      <div style="margin-bottom:0.75rem;">
+        <label style="font-size:0.85rem;font-weight:600;color:var(--gray-700);display:block;margin-bottom:0.35rem;">시간 슬롯</label>
+        <div id="seSecSlots">${slotsHTML}</div>
+        <button class="btn btn-sm btn-outline" id="seSecAddSlot" style="margin-top:0.35rem;">+ 시간 추가</button>
+      </div>
+      <div style="display:flex;gap:0.5rem;">
+        <button class="btn btn-sm btn-primary" id="seSecOk">확인</button>
+        ${sec ? '<button class="btn btn-sm btn-danger" id="seSecDelete">삭제</button>' : ''}
+        <button class="btn btn-sm btn-outline" id="seSecCancel">취소</button>
+      </div>`;
+
+    // Wire popup events
+    const colorsWrap = document.getElementById('seSecColors');
+    let selectedColor = sec ? sec.color : SWATCHES[0];
+    colorsWrap.querySelectorAll('.se-swatch').forEach(sw => {
+      sw.addEventListener('click', () => {
+        colorsWrap.querySelectorAll('.se-swatch').forEach(s => s.classList.remove('active'));
+        sw.classList.add('active');
+        selectedColor = sw.dataset.color;
+      });
+    });
+
+    // Add slot
+    document.getElementById('seSecAddSlot').addEventListener('click', () => {
+      const slotsContainer = document.getElementById('seSecSlots');
+      const idx = slotsContainer.children.length;
+      let dayOpts = allDays.map(d => `<option value="${d}">${d}</option>`).join('');
+      const row = document.createElement('div');
+      row.className = 'se-slot-row';
+      row.dataset.slotIdx = idx;
+      row.innerHTML = `<select class="se-slot-day">${dayOpts}</select>
+        <input type="time" class="se-slot-start" value="09:00">
+        <span>~</span>
+        <input type="time" class="se-slot-end" value="12:00">
+        <button class="se-slot-remove" data-slot-idx="${idx}">&times;</button>`;
+      slotsContainer.appendChild(row);
+      wireSlotRemove();
+    });
+
+    function wireSlotRemove() {
+      document.querySelectorAll('#seSecSlots .se-slot-remove').forEach(btn => {
+        btn.onclick = () => btn.closest('.se-slot-row').remove();
+      });
+    }
+    wireSlotRemove();
+
+    // OK
+    document.getElementById('seSecOk').addEventListener('click', () => {
+      const nameVal = document.getElementById('seSecName').value.trim();
+      if (!nameVal) { document.getElementById('seSecName').focus(); return; }
+
+      const subjectId = document.getElementById('seSecSubject').value || '';
+      const classId = document.getElementById('seSecClass').value || null;
+
+      // Collect slots
+      const slots = [];
+      document.querySelectorAll('#seSecSlots .se-slot-row').forEach(row => {
+        slots.push({
+          scheduleId: sched.id,
+          day: row.querySelector('.se-slot-day').value,
+          start: row.querySelector('.se-slot-start').value,
+          end: row.querySelector('.se-slot-end').value
+        });
+      });
+
+      if (!state.schedule_data.sections) state.schedule_data.sections = [];
+
+      if (sec) {
+        // Update existing section
+        sec.name[editLang] = nameVal;
+        sec.subjectId = subjectId;
+        sec.color = selectedColor;
+        sec.classId = classId;
+        // Replace slots for this schedule only; keep slots for other schedules
+        sec.slots = (sec.slots || []).filter(s => s.scheduleId !== sched.id).concat(slots);
+      } else {
+        // Create new section
+        const nameBi = { ko: '', en: '' };
+        nameBi[editLang] = nameVal;
+        state.schedule_data.sections.push({
+          id: genSectionId(),
+          subjectId,
+          name: nameBi,
+          color: selectedColor,
+          classId,
+          slots
+        });
+      }
       popup.style.display = 'none';
+      collectAllScheduleStates();
       renderScheduleList();
       syncSyllabus();
       markDirty();
-    }
-  });
+    });
 
-  document.getElementById('seBlockCancel').addEventListener('click', () => { popup.style.display = 'none'; });
-  blockSectionInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('seBlockOk').click(); });
+    // Delete
+    const delBtn = document.getElementById('seSecDelete');
+    if (delBtn) {
+      delBtn.addEventListener('click', () => {
+        if (!confirm('이 분반을 삭제하시겠습니까?')) return;
+        state.schedule_data.sections = (state.schedule_data.sections || []).filter(s => s.id !== sectionId);
+        popup.style.display = 'none';
+        collectAllScheduleStates();
+        renderScheduleList();
+        syncSyllabus();
+        markDirty();
+      });
+    }
+
+    // Cancel
+    document.getElementById('seSecCancel').addEventListener('click', () => { popup.style.display = 'none'; });
+
+    popup.style.display = 'flex';
+    document.getElementById('seSecName').focus();
+  }
 
   // Syllabus
   let activeSyllabusIdx = 0;
@@ -2160,7 +2261,7 @@ function initScheduleEditorPage() {
 
     let html = `<div class="se-subj-panel" data-idx="${activeSyllabusIdx}">
       <div class="form-group"><label>과목명${isLinked ? ' <small style="color:var(--gray-500);font-weight:400;">(과목 관리에서 변경)</small>' : ''}</label><input class="se-subj-name" value="${esc(t(subj.name))}" ${nameReadonly}></div>
-      ${isLinked && sessionCount > 0 ? `<div style="font-size:0.82rem;color:var(--gray-500);">시간표 블록 기준 총 ${sessionCount}회차</div>` : ''}
+      ${isLinked && sessionCount > 0 ? `<div style="font-size:0.82rem;color:var(--gray-500);">시간표 슬롯 기준 총 ${sessionCount}회차</div>` : ''}
       <div class="form-group"><label>설명</label><input class="se-subj-description" value="${esc(t(subj.description))}"></div>
       <div class="form-group"><label>홍보 문구</label><textarea class="se-subj-promo" rows="2">${esc(t(subj.promo))}</textarea></div>
 
@@ -2407,15 +2508,12 @@ function initScheduleEditorPage() {
     }
     let html = '';
     subjects.forEach((subj, i) => {
-      // Count blocks linked to this subject
-      let blockCount = 0;
-      state.schedule_data.schedules.forEach(sched => {
-        (sched.blocks || []).forEach(b => { if (b.subjectId === subj.id) blockCount++; });
-      });
+      // Count sections linked to this subject
+      let secCount = (state.schedule_data.sections || []).filter(s => s.subjectId === subj.id).length;
       html += `<div class="se-subject-item" data-subj-idx="${i}">
         <input type="text" class="se-subject-name-input" data-subj-idx="${i}" value="${esc(subj.name.ko || '')}" placeholder="과목명 (한)">
         <input type="text" class="se-subject-name-input-en" data-subj-idx="${i}" value="${esc(subj.name.en || '')}" placeholder="과목명 (영)">
-        <span class="se-subject-block-count">${blockCount}개 블록</span>
+        <span class="se-subject-block-count">${secCount}개 분반</span>
         <button class="se-subject-remove" data-subj-idx="${i}" title="삭제">&times;</button>
       </div>`;
     });
@@ -2440,16 +2538,11 @@ function initScheduleEditorPage() {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.subjIdx);
         const subj = state.schedule_data.subjects[idx];
-        let usedCount = 0;
-        state.schedule_data.schedules.forEach(sched => {
-          (sched.blocks || []).forEach(b => { if (b.subjectId === subj.id) usedCount++; });
-        });
+        let usedCount = (state.schedule_data.sections || []).filter(s => s.subjectId === subj.id).length;
         if (usedCount > 0) {
-          if (!confirm(`이 과목을 사용하는 블록이 ${usedCount}개 있습니다. 블록의 과목 연결이 해제됩니다. 삭제하시겠습니까?`)) return;
-          state.schedule_data.schedules.forEach(sched => {
-            (sched.blocks || []).forEach(b => {
-              if (b.subjectId === subj.id) { b.subjectId = ''; }
-            });
+          if (!confirm(`이 과목을 사용하는 분반이 ${usedCount}개 있습니다. 분반의 과목 연결이 해제됩니다. 삭제하시겠습니까?`)) return;
+          (state.schedule_data.sections || []).forEach(s => {
+            if (s.subjectId === subj.id) s.subjectId = '';
           });
         }
         state.schedule_data.subjects.splice(idx, 1);
@@ -2619,5 +2712,14 @@ function initScheduleEditorPage() {
     }
   });
 
-  loadData();
+  // Load classes list for section popup dropdown
+  async function loadClassesList() {
+    try {
+      const res = await fetch(window.__SEC + '/classes-list');
+      const data = await res.json();
+      if (data.success) window.__classesList = data.classes || [];
+    } catch (e) { window.__classesList = []; }
+  }
+
+  loadClassesList().then(() => loadData());
 }

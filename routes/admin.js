@@ -512,6 +512,17 @@ router.get('/students', requireAdmin, async (req, res) => {
 
 // ======= 수업 관리 =======
 
+// GET /admin/classes-list - 수업 목록 (분반 팝업용)
+router.get('/classes-list', requireAdmin, async (req, res) => {
+  try {
+    const classes = await sql`SELECT id, name, type, status FROM classes ORDER BY name`;
+    res.json({ success: true, classes });
+  } catch (err) {
+    console.error('Classes list error:', err);
+    res.json({ success: false, classes: [] });
+  }
+});
+
 // POST /admin/classes - 수업 생성 (admin + subadmin)
 router.post('/classes', requireAdminLike, async (req, res) => {
   try {

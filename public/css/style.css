@@ -2247,6 +2247,100 @@ body {
   border-color: var(--primary);
 }
 
+/* === Section list (분반 목록) === */
+.se-section-list {
+  margin-bottom: 0.75rem;
+}
+
+.se-section-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  margin-bottom: 0.35rem;
+  background: #fff;
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+
+.se-section-card:hover {
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+
+.se-section-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.se-section-card-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.se-section-card-slots {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  margin-left: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+/* Slot row in section popup */
+.se-slot-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.se-slot-row select {
+  padding: 0.3rem 0.4rem;
+  border: 1.5px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+  font-family: inherit;
+}
+
+.se-slot-row input[type="time"] {
+  padding: 0.3rem 0.4rem;
+  border: 1.5px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+  font-family: inherit;
+  width: 110px;
+}
+
+.se-slot-row select:focus,
+.se-slot-row input[type="time"]:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.se-slot-remove {
+  background: none;
+  border: none;
+  color: var(--gray-400);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 0.2rem;
+  line-height: 1;
+}
+
+.se-slot-remove:hover {
+  color: var(--danger);
+}
+
 /* === Schedule List Tabs (Admin) === */
 .sp-tab-nav {
   display: flex;

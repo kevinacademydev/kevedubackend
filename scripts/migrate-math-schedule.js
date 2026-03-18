@@ -1,10 +1,10 @@
 // ============================================================
-// 모든 시간표 페이지 → V2 과목-분반 시스템 마이그레이션
+// 모든 시간표 페이지 → V3 분반(Section) 시스템 마이그레이션
 // 실행: node scripts/migrate-math-schedule.js
 //
-// - schedule_data.subjects[] 과목 레지스트리 (재)생성
-// - 블록 이름 파싱: "AMC 10 이론수업 A" → 과목 "AMC 10", 분반 "이론수업 A"
-// - syllabus_data.subjects[]에 subjectId 연결, 중복 제거
+// - blocks[] → sections[].slots[] 전환
+// - 같은 schedule 내에서 subject(ko) + color 동일한 blocks → 하나의 section
+// - schedule에서 blocks 필드 제거
 // ============================================================
 require('dotenv').config();
 const postgres = require('postgres');
@@ -18,46 +18,29 @@ const sql = postgres(process.env.DATABASE_URL, {
   connect_timeout: 10
 });
 
-const SWATCHES = ['#3498DB','#E74C3C','#27AE60','#F39C12','#9B59B6','#1ABC9C','#E67E22','#34495E','#e94560','#2ECC71'];
+function genSectionId() {
+  return 'sec_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+}
 
 function genSubjectId() {
   return 'subj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
 }
 
-// Parse block name → { baseName, section }
 function parseBlockName(name) {
   let base = (name || '').trim();
   let section = '';
-
-  // 1) Extract trailing parenthetical: "Algebra I (AOPS)" → base "Algebra I", section "AOPS"
   const parenMatch = base.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
-  if (parenMatch) {
-    base = parenMatch[1].trim();
-    section = parenMatch[2].trim();
-  }
-
-  // 2) Extract trailing single uppercase letter: "AMC 10 이론수업 A" → section "A"
+  if (parenMatch) { base = parenMatch[1].trim(); section = parenMatch[2].trim(); }
   if (!section) {
     const letterMatch = base.match(/^(.+?)\s+([A-Z])\s*$/);
-    if (letterMatch) {
-      base = letterMatch[1].trim();
-      section = letterMatch[2];
-    }
+    if (letterMatch) { base = letterMatch[1].trim(); section = letterMatch[2]; }
   }
-
-  // 3) Extract "이론수업" / "Theory" — move to section prefix
   const thMatch = base.match(/^(.+?)\s*(이론수업|Theory)\s*$/i);
-  if (thMatch) {
-    const prefix = thMatch[2];
-    base = thMatch[1].trim();
-    section = section ? prefix + ' ' + section : '';
-  }
-
+  if (thMatch) { base = thMatch[1].trim(); section = section ? thMatch[2] + ' ' + section : ''; }
   return { baseName: base, section };
 }
 
 async function migrate() {
-  // Fetch ALL schedule pages
   const rows = await sql`
     SELECT id, slug, schedule_data, syllabus_data
     FROM schedule_pages
@@ -68,80 +51,117 @@ async function migrate() {
   for (const page of rows) {
     console.log(`=== Page: ${page.slug} (id=${page.id}) ===`);
 
-    const scheduleData = typeof page.schedule_data === 'string'
+    const sd = typeof page.schedule_data === 'string'
       ? JSON.parse(page.schedule_data) : (page.schedule_data || {});
     const syllabusData = typeof page.syllabus_data === 'string'
       ? JSON.parse(page.syllabus_data) : (page.syllabus_data || {});
 
-    if (!scheduleData.schedules || !scheduleData.schedules.length) {
+    // Already v3?
+    if (sd.version === 3 && sd.sections && sd.sections.length > 0) {
+      console.log('  Already v3, skipping.\n');
+      continue;
+    }
+
+    if (!sd.schedules || !sd.schedules.length) {
       console.log('  No schedules, skipping.\n');
       continue;
     }
 
-    // Reset subjects registry and block linkage for clean re-migration
-    scheduleData.subjects = [];
-    const baseMap = {}; // baseName → { id, name, color }
-    let colorIdx = 0;
+    // Step 1: Ensure subjects exist (v1→v2 subject extraction)
+    if (!sd.subjects) sd.subjects = [];
+    const hasBlocks = sd.schedules.some(s => s.blocks && s.blocks.length > 0);
 
-    // Process all blocks
-    let totalBlocks = 0;
-    scheduleData.schedules.forEach(sched => {
-      (sched.blocks || []).forEach(block => {
-        totalBlocks++;
-        const nameKo = (typeof block.subject === 'object' ? block.subject.ko : block.subject) || '';
-        const nameEn = (typeof block.subject === 'object' ? block.subject.en : '') || '';
-
-        const parsedKo = parseBlockName(nameKo);
-        const parsedEn = parseBlockName(nameEn);
-        const baseKey = parsedKo.baseName || parsedEn.baseName;
-        if (!baseKey) return;
-
-        if (!baseMap[baseKey]) {
-          const id = genSubjectId();
-          baseMap[baseKey] = {
-            id,
-            name: { ko: parsedKo.baseName, en: parsedEn.baseName || parsedKo.baseName },
-            color: block.color || SWATCHES[colorIdx % SWATCHES.length]
-          };
-          scheduleData.subjects.push(baseMap[baseKey]);
-          colorIdx++;
-        }
-
-        block.subjectId = baseMap[baseKey].id;
-        block.sectionLabel = parsedKo.section || parsedEn.section || '';
-        block.color = baseMap[baseKey].color;
+    if (hasBlocks && (!sd.version || sd.version < 2)) {
+      const baseMap = {};
+      sd.schedules.forEach(sched => {
+        (sched.blocks || []).forEach(b => {
+          if (b.subjectId) return;
+          const nameKo = (typeof b.subject === 'object' ? b.subject.ko : b.subject) || '';
+          const nameEn = (typeof b.subject === 'object' ? b.subject.en : '') || '';
+          const parsedKo = parseBlockName(nameKo);
+          const parsedEn = parseBlockName(nameEn);
+          const baseKey = parsedKo.baseName || parsedEn.baseName;
+          if (!baseKey) return;
+          if (!baseMap[baseKey]) {
+            const id = genSubjectId();
+            baseMap[baseKey] = { id, name: { ko: parsedKo.baseName, en: parsedEn.baseName || parsedKo.baseName } };
+            sd.subjects.push(baseMap[baseKey]);
+          }
+          b.subjectId = baseMap[baseKey].id;
+          b.sectionLabel = parsedKo.section || parsedEn.section || '';
+        });
       });
+    }
+
+    // Step 2: Convert blocks → sections
+    const sections = [];
+    const sectionMap = {}; // key → section
+    let totalBlocks = 0;
+
+    sd.schedules.forEach(sched => {
+      const schedId = sched.id;
+      (sched.blocks || []).forEach(b => {
+        totalBlocks++;
+        const nameKo = (typeof b.subject === 'object' ? b.subject.ko : b.subject) || '';
+        const nameEn = (typeof b.subject === 'object' ? b.subject.en : '') || '';
+        const color = b.color || '#3498DB';
+        const key = (b.subjectId || '') + '|' + color + '|' + (b.sectionLabel || '') + '|' + nameKo;
+
+        if (!sectionMap[key]) {
+          const secId = genSectionId();
+          sectionMap[key] = {
+            id: secId,
+            subjectId: b.subjectId || '',
+            name: { ko: nameKo, en: nameEn },
+            color: color,
+            classId: null,
+            slots: []
+          };
+        }
+        sectionMap[key].slots.push({
+          scheduleId: schedId,
+          day: b.day,
+          start: b.start,
+          end: b.end
+        });
+      });
+
+      // Remove blocks from schedule
+      delete sched.blocks;
     });
 
-    scheduleData.version = 2;
-    console.log(`  Blocks: ${totalBlocks}, Subjects: ${scheduleData.subjects.length}`);
-    scheduleData.subjects.forEach(s => console.log(`    - ${s.name.ko} [${s.color}]`));
+    sd.sections = Object.values(sectionMap);
+    sd.version = 3;
 
-    // Link syllabus subjects by name matching
+    console.log(`  Blocks: ${totalBlocks} → Sections: ${sd.sections.length}`);
+    sd.sections.forEach(s => {
+      console.log(`    - ${s.name.ko} [${s.color}] (${s.slots.length} slots)`);
+    });
+
+    // Link syllabus subjects
     const syllSubjects = syllabusData.subjects || [];
     let linked = 0;
     syllSubjects.forEach(syllSubj => {
-      // Clear old subjectId from bad migration
+      if (syllSubj.subjectId) {
+        // Check if subjectId still exists in registry
+        if (sd.subjects.find(s => s.id === syllSubj.subjectId)) {
+          linked++;
+          return;
+        }
+      }
       syllSubj.subjectId = '';
-
       const nameKo = (typeof syllSubj.name === 'object' ? syllSubj.name.ko : syllSubj.name) || '';
       const nameEn = (typeof syllSubj.name === 'object' ? syllSubj.name.en : '') || '';
-
-      const match = scheduleData.subjects.find(s =>
-        (nameKo && s.name.ko === nameKo) ||
-        (nameEn && s.name.en === nameEn)
+      const match = sd.subjects.find(s =>
+        (nameKo && s.name.ko === nameKo) || (nameEn && s.name.en === nameEn)
       );
-
       if (match) {
         syllSubj.subjectId = match.id;
         linked++;
-        console.log(`    Linked syllabus "${nameKo || nameEn}" → "${match.name.ko}"`);
-      } else {
-        console.log(`    Unlinked syllabus: "${nameKo || nameEn}"`);
       }
     });
 
-    // Remove duplicate syllabus entries (same subjectId)
+    // Deduplicate syllabus
     const seenIds = new Set();
     syllabusData.subjects = syllSubjects.filter(s => {
       if (!s.subjectId) return true;
@@ -153,8 +173,8 @@ async function migrate() {
     syllabusData.version = 2;
     console.log(`  Syllabus: ${syllSubjects.length} → ${syllabusData.subjects.length} (${linked} linked)\n`);
 
-    // Save
-    const schedJson = JSON.stringify(scheduleData);
+    // Save (TEXT column — no ::jsonb cast)
+    const schedJson = JSON.stringify(sd);
     const syllJson = JSON.stringify(syllabusData);
 
     await sql`
