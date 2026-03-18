@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>관리자 대시보드 - 케빈아카데미</title>
+  <link rel="icon" type="image/png" href="/images/favicon.png">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -68,46 +69,28 @@
             <div class="card">
               <div class="card-header">
                 <h3>수업</h3>
-                <% if (userRole === 'admin' || userRole === 'subadmin') { %>
-                  <button class="btn btn-sm btn-primary" id="btnCreateClass">+ 수업 생성</button>
-                <% } %>
+                <a href="<%= sectionPath %>/classes" class="btn btn-sm btn-outline">전체 보기</a>
               </div>
               <div class="card-body">
-                <% if (classes.length === 0) { %>
-                  <p class="empty-message">등록된 수업이 없습니다.</p>
-                <% } else { %>
-                  <%
-                    const activeClasses = classes.filter(c => c.status === 'active');
-                    const upcomingClasses = classes.filter(c => c.status === 'upcoming');
-                    const inactiveClasses = classes.filter(c => c.status === 'inactive');
-                    const statusGroups = [
-                      { label: '진행 중', items: activeClasses },
-                      { label: '예정', items: upcomingClasses },
-                      { label: '종강', items: inactiveClasses }
-                    ];
-                  %>
-                  <% statusGroups.forEach(group => { %>
-                    <% if (group.items.length > 0) { %>
-                      <h4 style="margin: 0.75rem 0 0.5rem; font-size:0.85rem; color:var(--gray-500); font-weight:600;"><%= group.label %> (<%= group.items.length %>)</h4>
-                      <div class="class-list" style="margin-bottom:0.5rem;">
-                        <% group.items.forEach(cls => { %>
-                          <a href="<%= sectionPath %>/class/<%= cls.id %>" class="class-card <%= cls.status === 'inactive' ? 'class-inactive' : '' %> <%= cls.status === 'upcoming' ? 'class-upcoming' : '' %>">
-                            <div class="class-card-info">
-                              <strong><%= cls.name %></strong>
-                              <span class="badge"><%= cls.type === 'regular' ? '정규' : cls.type === 'team' ? '그룹' : '개인' %></span>
-                              <% if (cls.status === 'upcoming') { %><span class="badge badge-upcoming">예정</span><% } %>
-                              <% if (cls.status === 'inactive') { %><span class="badge">종강</span><% } %>
-                            </div>
-                            <div class="class-card-meta">
-                              <span>학생 <%= cls.student_count %>명</span>
-                              <% if (cls.teacher_names) { %><span>| <%= cls.teacher_names %></span><% } %>
-                            </div>
-                          </a>
-                        <% }) %>
-                      </div>
-                    <% } %>
-                  <% }) %>
-                <% } %>
+                <%
+                  const activeClasses = classes.filter(c => c.status === 'active');
+                  const upcomingClasses = classes.filter(c => c.status === 'upcoming');
+                  const inactiveClasses = classes.filter(c => c.status === 'inactive');
+                %>
+                <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
+                  <div style="text-align:center;">
+                    <div style="font-size:1.5rem;font-weight:700;color:var(--primary);"><%= activeClasses.length %></div>
+                    <div style="font-size:0.8rem;color:var(--gray-500);">진행 중</div>
+                  </div>
+                  <div style="text-align:center;">
+                    <div style="font-size:1.5rem;font-weight:700;color:var(--warning, #f59e0b);"><%= upcomingClasses.length %></div>
+                    <div style="font-size:0.8rem;color:var(--gray-500);">예정</div>
+                  </div>
+                  <div style="text-align:center;">
+                    <div style="font-size:1.5rem;font-weight:700;color:var(--gray-400);"><%= inactiveClasses.length %></div>
+                    <div style="font-size:0.8rem;color:var(--gray-500);">종강</div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -222,34 +205,6 @@
         </div>
       </div>
     </main>
-  </div>
-
-  <!-- 수업 생성 모달 -->
-  <div id="createClassModal" class="modal-overlay" style="display:none;">
-    <div class="modal">
-      <div class="modal-header">
-        <h3>수업 생성</h3>
-        <button class="modal-close" onclick="document.getElementById('createClassModal').style.display='none'">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group" style="margin-bottom:1rem;">
-          <label>수업 이름</label>
-          <input type="text" id="newClassName" placeholder="예: 수학 심화반 C">
-        </div>
-        <div class="form-group">
-          <label>유형</label>
-          <select id="newClassType">
-            <option value="regular">정규</option>
-            <option value="team">그룹</option>
-            <option value="private">개인</option>
-          </select>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" onclick="document.getElementById('createClassModal').style.display='none'">취소</button>
-        <button class="btn btn-primary" id="btnConfirmCreateClass">생성</button>
-      </div>
-    </div>
   </div>
 
   <!-- 강사 생성 모달 -->

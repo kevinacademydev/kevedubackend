@@ -10,77 +10,173 @@
   <nav class="sidebar-nav">
     <div class="sidebar-section">
       <a href="<%= sectionPath %>" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'dashboard' ? 'active' : '' %>">
-        <span class="sidebar-icon">&#128200;</span>
+        <span class="sidebar-icon">&#127968;</span>
         <span>대시보드</span>
       </a>
     </div>
 
-    <% const activeClasses = sidebarClasses.filter(c => c.status === 'active'); %>
-    <% const upcomingClasses = sidebarClasses.filter(c => c.status === 'upcoming'); %>
-    <% const inactiveClasses = sidebarClasses.filter(c => c.status === 'inactive'); %>
+    <% if (user.role === 'admin' || user.role === 'subadmin') { %>
+      <%/* ===== admin/subadmin: "내 수업" 아코디언 + "전체 수업 관리" 링크 ===== */ %>
+      <% const myClasses = typeof mySidebarClasses !== 'undefined' ? mySidebarClasses : []; %>
+      <% const myActive = myClasses.filter(c => c.status === 'active'); %>
+      <% const myUpcoming = myClasses.filter(c => c.status === 'upcoming'); %>
+      <% const myInactive = myClasses.filter(c => c.status === 'inactive'); %>
 
-    <div class="sidebar-section">
-      <button class="sidebar-nav-item sidebar-toggle active" data-target="activeClassesSubmenu">
-        <span class="sidebar-icon">&#128218;</span>
-        <span>현재 수업</span>
-        <span class="sidebar-arrow">&#9660;</span>
-      </button>
-      <ul class="sidebar-submenu open" id="activeClassesSubmenu">
-        <% if (activeClasses.length === 0) { %>
-          <li class="sidebar-submenu-empty">등록된 수업 없음</li>
-        <% } else { %>
-          <% activeClasses.forEach(cls => { %>
-            <li>
-              <a href="<%= sectionPath %>/class/<%= cls.id %>" class="sidebar-submenu-item <%= typeof activeClassId !== 'undefined' && activeClassId == cls.id ? 'active' : '' %>">
-                <%= cls.name %>
-              </a>
-            </li>
-          <% }) %>
-        <% } %>
-      </ul>
-    </div>
-
-    <% if (upcomingClasses.length > 0) { %>
-    <div class="sidebar-section">
-      <button class="sidebar-nav-item sidebar-toggle" data-target="upcomingClassesSubmenu">
-        <span class="sidebar-icon">&#128197;</span>
-        <span>예정된 수업</span>
-        <span class="sidebar-arrow">&#9660;</span>
-      </button>
-      <ul class="sidebar-submenu" id="upcomingClassesSubmenu">
-        <% upcomingClasses.forEach(cls => { %>
-          <li>
-            <a href="<%= sectionPath %>/class/<%= cls.id %>" class="sidebar-submenu-item class-upcoming <%= typeof activeClassId !== 'undefined' && activeClassId == cls.id ? 'active' : '' %>">
-              <%= cls.name %>
-            </a>
+      <div class="sidebar-section">
+        <div class="sidebar-nav-item sidebar-toggle-classes <%= typeof activePage !== 'undefined' && activePage === 'my-classes' ? 'active' : '' %>" data-target="myClassesSubmenu">
+          <a href="<%= sectionPath %>/my-classes" class="sidebar-classes-link" onclick="event.stopPropagation();">
+            <span class="sidebar-icon">&#127891;</span>
+            <span>내 수업</span>
+          </a>
+          <button class="sidebar-arrow-btn" type="button" data-target="myClassesSubmenu">&#9660;</button>
+        </div>
+        <ul class="sidebar-submenu" id="myClassesSubmenu">
+          <% if (myActive.length > 0) { %>
+          <li class="sidebar-subgroup">
+            <button class="sidebar-subgroup-toggle active" data-target="myActiveClassesSub">
+              <span>진행 중 (<%= myActive.length %>)</span>
+              <span class="sidebar-arrow">&#9660;</span>
+            </button>
+            <ul class="sidebar-submenu open" id="myActiveClassesSub">
+              <% myActive.forEach(cls => { %>
+                <li>
+                  <a href="<%= sectionPath %>/class/<%= cls.id %>" class="sidebar-submenu-item <%= typeof activeClassId !== 'undefined' && activeClassId == cls.id ? 'active' : '' %>">
+                    <%= cls.name %>
+                  </a>
+                </li>
+              <% }) %>
+            </ul>
           </li>
-        <% }) %>
-      </ul>
-    </div>
-    <% } %>
+          <% } %>
 
-    <% if (inactiveClasses.length > 0) { %>
-    <div class="sidebar-section">
-      <button class="sidebar-nav-item sidebar-toggle" data-target="inactiveClassesSubmenu">
-        <span class="sidebar-icon">&#128220;</span>
-        <span>과거 수업</span>
-        <span class="sidebar-arrow">&#9660;</span>
-      </button>
-      <ul class="sidebar-submenu" id="inactiveClassesSubmenu">
-        <% inactiveClasses.forEach(cls => { %>
-          <li>
-            <a href="<%= sectionPath %>/class/<%= cls.id %>" class="sidebar-submenu-item class-inactive <%= typeof activeClassId !== 'undefined' && activeClassId == cls.id ? 'active' : '' %>">
-              <%= cls.name %>
-            </a>
+          <% if (myUpcoming.length > 0) { %>
+          <li class="sidebar-subgroup">
+            <button class="sidebar-subgroup-toggle" data-target="myUpcomingClassesSub">
+              <span>예정 (<%= myUpcoming.length %>)</span>
+              <span class="sidebar-arrow">&#9654;</span>
+            </button>
+            <ul class="sidebar-submenu" id="myUpcomingClassesSub">
+              <% myUpcoming.forEach(cls => { %>
+                <li>
+                  <a href="<%= sectionPath %>/class/<%= cls.id %>" class="sidebar-submenu-item class-upcoming <%= typeof activeClassId !== 'undefined' && activeClassId == cls.id ? 'active' : '' %>">
+                    <%= cls.name %>
+                  </a>
+                </li>
+              <% }) %>
+            </ul>
           </li>
-        <% }) %>
-      </ul>
-    </div>
+          <% } %>
+
+          <% if (myInactive.length > 0) { %>
+          <li class="sidebar-subgroup">
+            <button class="sidebar-subgroup-toggle" data-target="myInactiveClassesSub">
+              <span>종강 (<%= myInactive.length %>)</span>
+              <span class="sidebar-arrow">&#9654;</span>
+            </button>
+            <ul class="sidebar-submenu" id="myInactiveClassesSub">
+              <% myInactive.forEach(cls => { %>
+                <li>
+                  <a href="<%= sectionPath %>/class/<%= cls.id %>" class="sidebar-submenu-item class-inactive <%= typeof activeClassId !== 'undefined' && activeClassId == cls.id ? 'active' : '' %>">
+                    <%= cls.name %>
+                  </a>
+                </li>
+              <% }) %>
+            </ul>
+          </li>
+          <% } %>
+
+          <% if (myClasses.length === 0) { %>
+            <li class="sidebar-submenu-empty">담당 수업 없음</li>
+          <% } %>
+        </ul>
+      </div>
+
+      <div class="sidebar-section">
+        <a href="<%= sectionPath %>/classes" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'classes' ? 'active' : '' %>">
+          <span class="sidebar-icon">&#128209;</span>
+          <span>전체 수업 관리</span>
+        </a>
+      </div>
+
+    <% } else { %>
+      <%/* ===== teacher: 기존 "수업" 아코디언 ===== */ %>
+      <% const activeClasses = sidebarClasses.filter(c => c.status === 'active'); %>
+      <% const upcomingClasses = sidebarClasses.filter(c => c.status === 'upcoming'); %>
+      <% const inactiveClasses = sidebarClasses.filter(c => c.status === 'inactive'); %>
+
+      <div class="sidebar-section">
+        <div class="sidebar-nav-item sidebar-toggle-classes <%= typeof activePage !== 'undefined' && activePage === 'classes' ? 'active' : '' %>" data-target="classesSubmenu">
+          <a href="<%= sectionPath %>/classes" class="sidebar-classes-link" onclick="event.stopPropagation();">
+            <span class="sidebar-icon">&#127891;</span>
+            <span>수업</span>
+          </a>
+          <button class="sidebar-arrow-btn" type="button" data-target="classesSubmenu">&#9660;</button>
+        </div>
+        <ul class="sidebar-submenu" id="classesSubmenu">
+          <% if (activeClasses.length > 0) { %>
+          <li class="sidebar-subgroup">
+            <button class="sidebar-subgroup-toggle active" data-target="activeClassesSub">
+              <span>진행 중 (<%= activeClasses.length %>)</span>
+              <span class="sidebar-arrow">&#9660;</span>
+            </button>
+            <ul class="sidebar-submenu open" id="activeClassesSub">
+              <% activeClasses.forEach(cls => { %>
+                <li>
+                  <a href="<%= sectionPath %>/class/<%= cls.id %>" class="sidebar-submenu-item <%= typeof activeClassId !== 'undefined' && activeClassId == cls.id ? 'active' : '' %>">
+                    <%= cls.name %>
+                  </a>
+                </li>
+              <% }) %>
+            </ul>
+          </li>
+          <% } %>
+
+          <% if (upcomingClasses.length > 0) { %>
+          <li class="sidebar-subgroup">
+            <button class="sidebar-subgroup-toggle" data-target="upcomingClassesSub">
+              <span>예정 (<%= upcomingClasses.length %>)</span>
+              <span class="sidebar-arrow">&#9654;</span>
+            </button>
+            <ul class="sidebar-submenu" id="upcomingClassesSub">
+              <% upcomingClasses.forEach(cls => { %>
+                <li>
+                  <a href="<%= sectionPath %>/class/<%= cls.id %>" class="sidebar-submenu-item class-upcoming <%= typeof activeClassId !== 'undefined' && activeClassId == cls.id ? 'active' : '' %>">
+                    <%= cls.name %>
+                  </a>
+                </li>
+              <% }) %>
+            </ul>
+          </li>
+          <% } %>
+
+          <% if (inactiveClasses.length > 0) { %>
+          <li class="sidebar-subgroup">
+            <button class="sidebar-subgroup-toggle" data-target="inactiveClassesSub">
+              <span>종강 (<%= inactiveClasses.length %>)</span>
+              <span class="sidebar-arrow">&#9654;</span>
+            </button>
+            <ul class="sidebar-submenu" id="inactiveClassesSub">
+              <% inactiveClasses.forEach(cls => { %>
+                <li>
+                  <a href="<%= sectionPath %>/class/<%= cls.id %>" class="sidebar-submenu-item class-inactive <%= typeof activeClassId !== 'undefined' && activeClassId == cls.id ? 'active' : '' %>">
+                    <%= cls.name %>
+                  </a>
+                </li>
+              <% }) %>
+            </ul>
+          </li>
+          <% } %>
+
+          <% if (sidebarClasses.length === 0) { %>
+            <li class="sidebar-submenu-empty">등록된 수업 없음</li>
+          <% } %>
+        </ul>
+      </div>
     <% } %>
 
     <div class="sidebar-section">
       <a href="<%= sectionPath %>/<%= user.username %>/students-list" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'students-list' ? 'active' : '' %>">
-        <span class="sidebar-icon">&#128101;</span>
+        <span class="sidebar-icon sidebar-icon-white">&#128101;</span>
         <span>학생 목록</span>
       </a>
     </div>
@@ -88,7 +184,7 @@
     <% if (user.role === 'admin' || user.role === 'subadmin') { %>
     <div class="sidebar-section">
       <a href="<%= sectionPath %>/teachers" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'teachers' ? 'active' : '' %>">
-        <span class="sidebar-icon">&#128100;</span>
+        <span class="sidebar-icon sidebar-icon-white">&#128100;</span>
         <span>강사 관리</span>
       </a>
     </div>
@@ -103,21 +199,21 @@
 
     <div class="sidebar-section">
       <a href="<%= sectionPath %>/graded" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'graded' ? 'active' : '' %>">
-        <span class="sidebar-icon">&#9989;</span>
+        <span class="sidebar-icon">&#128221;</span>
         <span>최근 채점 업로드</span>
       </a>
     </div>
 
     <div class="sidebar-section">
       <a href="<%= sectionPath %>/stats" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'stats' ? 'active' : '' %>">
-        <span class="sidebar-icon">&#128202;</span>
+        <span class="sidebar-icon">&#128200;</span>
         <span>통계</span>
       </a>
     </div>
 
     <div class="sidebar-section">
       <a href="<%= sectionPath %>/schedule-pages" class="sidebar-nav-item <%= typeof activePage !== 'undefined' && activePage === 'schedule-pages' ? 'active' : '' %>">
-        <span class="sidebar-icon">&#128337;</span>
+        <span class="sidebar-icon">&#128197;</span>
         <span>시간표 만들기</span>
       </a>
     </div>
@@ -135,17 +231,17 @@
   <div class="sidebar-section">
     <div class="sidebar-section-title">외부 링크</div>
     <a href="https://blog.naver.com/kevedu" target="_blank" rel="noopener" class="sidebar-nav-item sidebar-link">
-      <span class="sidebar-icon">&#128221;</span>
+      <span class="sidebar-icon sidebar-icon-brand"><img src="/images/icon-naver-blog.svg" alt="Naver" class="sidebar-brand-icon"></span>
       <span>Kevin Academy Blog</span>
       <span class="sidebar-external">&#8599;</span>
     </a>
-    <a href="https://pf.kakao.com/_PuTpxb/chat" target="_blank" rel="noopener" class="sidebar-nav-item sidebar-link">
-      <span class="sidebar-icon">&#128172;</span>
+    <a href="https://pf.kakao.com/_PuTpb/chat" target="_blank" rel="noopener" class="sidebar-nav-item sidebar-link">
+      <span class="sidebar-icon sidebar-icon-brand"><img src="/images/icon-kakaotalk.svg" alt="KakaoTalk" class="sidebar-brand-icon"></span>
       <span>카카오톡 상담</span>
       <span class="sidebar-external">&#8599;</span>
     </a>
     <a href="https://www.desmos.com/calculator" target="_blank" rel="noopener" class="sidebar-nav-item sidebar-link">
-      <span class="sidebar-icon">&#128202;</span>
+      <span class="sidebar-icon sidebar-icon-brand"><img src="/images/icon-desmos.svg" alt="Desmos" class="sidebar-brand-icon"></span>
       <span>Desmos 계산기</span>
       <span class="sidebar-external">&#8599;</span>
     </a>
