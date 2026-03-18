@@ -159,8 +159,8 @@ async function migrate() {
 
     await sql`
       UPDATE schedule_pages
-      SET schedule_data = ${schedJson}::jsonb,
-          syllabus_data = ${syllJson}::jsonb
+      SET schedule_data = ${schedJson},
+          syllabus_data = ${syllJson}
       WHERE id = ${page.id}
     `;
   }
