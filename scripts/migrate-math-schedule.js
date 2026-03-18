@@ -1,11 +1,10 @@
 // ============================================================
-// 2026 Summer Math Schedule - V2 과목-분반 시스템 마이그레이션
+// 모든 시간표 페이지 → V2 과목-분반 시스템 마이그레이션
 // 실행: node scripts/migrate-math-schedule.js
 //
-// 기존 schedule_data, syllabus_data를 v2 구조로 변환:
-//   - schedule_data.subjects[] 과목 레지스트리 생성
-//   - 블록에 subjectId, sectionLabel 추가
-//   - syllabus_data.subjects[]에 subjectId 연결
+// - schedule_data.subjects[] 과목 레지스트리 (재)생성
+// - 블록 이름 파싱: "AMC 10 이론수업 A" → 과목 "AMC 10", 분반 "이론수업 A"
+// - syllabus_data.subjects[]에 subjectId 연결, 중복 제거
 // ============================================================
 require('dotenv').config();
 const postgres = require('postgres');
@@ -19,184 +18,154 @@ const sql = postgres(process.env.DATABASE_URL, {
   connect_timeout: 10
 });
 
-const TARGET_SLUG = '2026summermath';
-
-// Subject mapping: 블록 과목명(ko) → { subjectName, sectionLabel }
-// 실제 블록 데이터에 맞춰 정의
-const SUBJECT_MAP = {
-  // AMC 10 계열
-  'AMC 10 이론수업 A': { subject: 'AMC 10', section: 'A' },
-  'AMC 10 Theory A': { subject: 'AMC 10', section: 'A' },
-  'AMC 10 이론수업 Zoom': { subject: 'AMC 10', section: 'Zoom' },
-  'AMC 10 Theory Zoom': { subject: 'AMC 10', section: 'Zoom' },
-  'AMC 10 이론수업 B': { subject: 'AMC 10', section: 'B' },
-  'AMC 10 Theory B': { subject: 'AMC 10', section: 'B' },
-  // AMC 12 계열
-  'AMC 12 이론수업 A': { subject: 'AMC 12', section: 'A' },
-  'AMC 12 Theory A': { subject: 'AMC 12', section: 'A' },
-  'AMC 12 이론수업 Zoom': { subject: 'AMC 12', section: 'Zoom' },
-  'AMC 12 Theory Zoom': { subject: 'AMC 12', section: 'Zoom' },
-  'AMC 12 이론수업 B': { subject: 'AMC 12', section: 'B' },
-  'AMC 12 Theory B': { subject: 'AMC 12', section: 'B' },
-  // AMC 8
-  'AMC 8 이론수업': { subject: 'AMC 8', section: '' },
-  'AMC 8 Theory': { subject: 'AMC 8', section: '' },
-  // AP Calc BC
-  'AP Calculus BC': { subject: 'AP Calculus BC', section: '' },
-  // AP Stats
-  'AP Statistics': { subject: 'AP Statistics', section: '' },
-  // Single-session subjects
-  'Algebra I': { subject: 'Algebra I', section: '' },
-  'Algebra II': { subject: 'Algebra II', section: '' },
-  'Geometry': { subject: 'Geometry', section: '' },
-  'Precalculus': { subject: 'Precalculus', section: '' },
-};
-
-// Subject colors (consistent)
-const SUBJECT_COLORS = {
-  'AMC 10': '#3498DB',
-  'AMC 12': '#E74C3C',
-  'AMC 8': '#9B59B6',
-  'AP Calculus BC': '#27AE60',
-  'AP Statistics': '#F39C12',
-  'Algebra I': '#1ABC9C',
-  'Algebra II': '#E67E22',
-  'Geometry': '#34495E',
-  'Precalculus': '#e94560',
-};
+const SWATCHES = ['#3498DB','#E74C3C','#27AE60','#F39C12','#9B59B6','#1ABC9C','#E67E22','#34495E','#e94560','#2ECC71'];
 
 function genSubjectId() {
   return 'subj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
 }
 
+// Parse block name → { baseName, section }
+function parseBlockName(name) {
+  let base = (name || '').trim();
+  let section = '';
+
+  // 1) Extract trailing parenthetical: "Algebra I (AOPS)" → base "Algebra I", section "AOPS"
+  const parenMatch = base.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+  if (parenMatch) {
+    base = parenMatch[1].trim();
+    section = parenMatch[2].trim();
+  }
+
+  // 2) Extract trailing single uppercase letter: "AMC 10 이론수업 A" → section "A"
+  if (!section) {
+    const letterMatch = base.match(/^(.+?)\s+([A-Z])\s*$/);
+    if (letterMatch) {
+      base = letterMatch[1].trim();
+      section = letterMatch[2];
+    }
+  }
+
+  // 3) Extract "이론수업" / "Theory" — move to section prefix
+  const thMatch = base.match(/^(.+?)\s*(이론수업|Theory)\s*$/i);
+  if (thMatch) {
+    const prefix = thMatch[2];
+    base = thMatch[1].trim();
+    section = section ? prefix + ' ' + section : '';
+  }
+
+  return { baseName: base, section };
+}
+
 async function migrate() {
-  // 1. Fetch current page data
+  // Fetch ALL schedule pages
   const rows = await sql`
-    SELECT id, schedule_data, syllabus_data
+    SELECT id, slug, schedule_data, syllabus_data
     FROM schedule_pages
-    WHERE slug = ${TARGET_SLUG}
   `;
 
-  if (!rows.length) {
-    console.log(`Page with slug "${TARGET_SLUG}" not found.`);
-    process.exit(1);
-  }
+  console.log(`Found ${rows.length} schedule pages\n`);
 
-  const page = rows[0];
-  const scheduleData = typeof page.schedule_data === 'string'
-    ? JSON.parse(page.schedule_data) : page.schedule_data;
-  const syllabusData = typeof page.syllabus_data === 'string'
-    ? JSON.parse(page.syllabus_data) : page.syllabus_data;
+  for (const page of rows) {
+    console.log(`=== Page: ${page.slug} (id=${page.id}) ===`);
 
-  console.log(`Found page id=${page.id}, schedules=${(scheduleData.schedules || []).length}`);
+    const scheduleData = typeof page.schedule_data === 'string'
+      ? JSON.parse(page.schedule_data) : (page.schedule_data || {});
+    const syllabusData = typeof page.syllabus_data === 'string'
+      ? JSON.parse(page.syllabus_data) : (page.syllabus_data || {});
 
-  // 2. Build subject registry
-  const subjectRegistry = {}; // name -> { id, name, color }
-  const subjects = [];
+    if (!scheduleData.schedules || !scheduleData.schedules.length) {
+      console.log('  No schedules, skipping.\n');
+      continue;
+    }
 
-  function ensureSubject(name) {
-    if (subjectRegistry[name]) return subjectRegistry[name].id;
-    const id = genSubjectId();
-    const entry = {
-      id,
-      name: { ko: name, en: name },
-      color: SUBJECT_COLORS[name] || '#3498DB'
-    };
-    subjectRegistry[name] = entry;
-    subjects.push(entry);
-    return id;
-  }
+    // Reset subjects registry and block linkage for clean re-migration
+    scheduleData.subjects = [];
+    const baseMap = {}; // baseName → { id, name, color }
+    let colorIdx = 0;
 
-  // 3. Process all blocks
-  let totalBlocks = 0;
-  let mappedBlocks = 0;
-  let unmappedBlocks = [];
+    // Process all blocks
+    let totalBlocks = 0;
+    scheduleData.schedules.forEach(sched => {
+      (sched.blocks || []).forEach(block => {
+        totalBlocks++;
+        const nameKo = (typeof block.subject === 'object' ? block.subject.ko : block.subject) || '';
+        const nameEn = (typeof block.subject === 'object' ? block.subject.en : '') || '';
 
-  (scheduleData.schedules || []).forEach((sched, si) => {
-    (sched.blocks || []).forEach(block => {
-      totalBlocks++;
-      const koName = (typeof block.subject === 'object' ? block.subject.ko : block.subject) || '';
-      const enName = (typeof block.subject === 'object' ? block.subject.en : '') || '';
+        const parsedKo = parseBlockName(nameKo);
+        const parsedEn = parseBlockName(nameEn);
+        const baseKey = parsedKo.baseName || parsedEn.baseName;
+        if (!baseKey) return;
 
-      // Try to find mapping
-      const mapping = SUBJECT_MAP[koName] || SUBJECT_MAP[enName];
-
-      if (mapping) {
-        const subjId = ensureSubject(mapping.subject);
-        block.subjectId = subjId;
-        block.sectionLabel = mapping.section;
-        block.color = SUBJECT_COLORS[mapping.subject] || block.color;
-        // Update display name
-        const label = mapping.section ? ' ' + mapping.section : '';
-        if (typeof block.subject === 'object') {
-          // Keep existing ko/en but ensure they're consistent
-        } else {
-          block.subject = { ko: koName, en: enName };
+        if (!baseMap[baseKey]) {
+          const id = genSubjectId();
+          baseMap[baseKey] = {
+            id,
+            name: { ko: parsedKo.baseName, en: parsedEn.baseName || parsedKo.baseName },
+            color: block.color || SWATCHES[colorIdx % SWATCHES.length]
+          };
+          scheduleData.subjects.push(baseMap[baseKey]);
+          colorIdx++;
         }
-        mappedBlocks++;
+
+        block.subjectId = baseMap[baseKey].id;
+        block.sectionLabel = parsedKo.section || parsedEn.section || '';
+        block.color = baseMap[baseKey].color;
+      });
+    });
+
+    scheduleData.version = 2;
+    console.log(`  Blocks: ${totalBlocks}, Subjects: ${scheduleData.subjects.length}`);
+    scheduleData.subjects.forEach(s => console.log(`    - ${s.name.ko} [${s.color}]`));
+
+    // Link syllabus subjects by name matching
+    const syllSubjects = syllabusData.subjects || [];
+    let linked = 0;
+    syllSubjects.forEach(syllSubj => {
+      // Clear old subjectId from bad migration
+      syllSubj.subjectId = '';
+
+      const nameKo = (typeof syllSubj.name === 'object' ? syllSubj.name.ko : syllSubj.name) || '';
+      const nameEn = (typeof syllSubj.name === 'object' ? syllSubj.name.en : '') || '';
+
+      const match = scheduleData.subjects.find(s =>
+        (nameKo && s.name.ko === nameKo) ||
+        (nameEn && s.name.en === nameEn)
+      );
+
+      if (match) {
+        syllSubj.subjectId = match.id;
+        linked++;
+        console.log(`    Linked syllabus "${nameKo || nameEn}" → "${match.name.ko}"`);
       } else {
-        // Fallback: use full name as subject, no section
-        const subjName = koName || enName || 'Unknown';
-        const subjId = ensureSubject(subjName);
-        block.subjectId = subjId;
-        block.sectionLabel = '';
-        unmappedBlocks.push(koName || enName);
+        console.log(`    Unlinked syllabus: "${nameKo || nameEn}"`);
       }
     });
-  });
 
-  console.log(`\nBlocks: ${totalBlocks} total, ${mappedBlocks} mapped`);
-  if (unmappedBlocks.length) {
-    console.log(`Unmapped blocks (used full name as subject):`, [...new Set(unmappedBlocks)]);
+    // Remove duplicate syllabus entries (same subjectId)
+    const seenIds = new Set();
+    syllabusData.subjects = syllSubjects.filter(s => {
+      if (!s.subjectId) return true;
+      if (seenIds.has(s.subjectId)) return false;
+      seenIds.add(s.subjectId);
+      return true;
+    });
+
+    syllabusData.version = 2;
+    console.log(`  Syllabus: ${syllSubjects.length} → ${syllabusData.subjects.length} (${linked} linked)\n`);
+
+    // Save
+    const schedJson = JSON.stringify(scheduleData);
+    const syllJson = JSON.stringify(syllabusData);
+
+    await sql`
+      UPDATE schedule_pages
+      SET schedule_data = ${schedJson}::jsonb,
+          syllabus_data = ${syllJson}::jsonb
+      WHERE id = ${page.id}
+    `;
   }
 
-  // 4. Update schedule_data
-  scheduleData.version = 2;
-  scheduleData.subjects = subjects;
-
-  console.log(`\nSubject registry (${subjects.length} subjects):`);
-  subjects.forEach(s => console.log(`  - ${s.name.ko} (${s.id}) [${s.color}]`));
-
-  // 5. Link syllabus subjects
-  const syllSubjects = syllabusData.subjects || [];
-  let linked = 0;
-  syllSubjects.forEach(syllSubj => {
-    const nameKo = (typeof syllSubj.name === 'object' ? syllSubj.name.ko : syllSubj.name) || '';
-    const nameEn = (typeof syllSubj.name === 'object' ? syllSubj.name.en : '') || '';
-
-    // Try exact match in registry
-    const match = subjects.find(s =>
-      s.name.ko === nameKo || s.name.en === nameEn ||
-      s.name.ko === nameKo.replace(/ (이론수업|Theory).*/, '') ||
-      s.name.en === nameEn.replace(/ (이론수업|Theory).*/, '')
-    );
-
-    if (match) {
-      syllSubj.subjectId = match.id;
-      linked++;
-      console.log(`  Linked syllabus "${nameKo}" → subject "${match.name.ko}"`);
-    } else {
-      console.log(`  WARNING: No match for syllabus "${nameKo}"`);
-    }
-  });
-
-  syllabusData.version = 2;
-
-  console.log(`\nSyllabus: ${syllSubjects.length} subjects, ${linked} linked`);
-
-  // 6. Save to DB
-  const schedJson = JSON.stringify(scheduleData);
-  const syllJson = JSON.stringify(syllabusData);
-
-  await sql`
-    UPDATE schedule_pages
-    SET schedule_data = ${schedJson}::jsonb,
-        syllabus_data = ${syllJson}::jsonb
-    WHERE id = ${page.id}
-  `;
-
-  console.log(`\nSaved! Page id=${page.id} updated to v2.`);
-
+  console.log('Done!');
   await sql.end();
 }
 

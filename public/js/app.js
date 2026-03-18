@@ -1508,27 +1508,66 @@ function initScheduleEditorPage() {
       });
     }
 
-    // --- V2 migration: extract subjects from blocks if not yet done ---
+    // --- V2 migration: extract subjects from blocks ---
     if (!sd.subjects) sd.subjects = [];
     if (!sd.version || sd.version < 2) {
-      // Build subject registry from existing blocks
-      const colorMap = {}; // "subjectBaseText" -> { id, name, color }
+      // Parse block name → { baseName, section }
+      // "AMC 10 이론수업 A" → { baseName: "AMC 10", section: "이론수업 A" }
+      // "AMC 10 이론수업 (ZOOM)" → { baseName: "AMC 10", section: "이론수업 Zoom" }
+      // "Algebra I (AOPS)" → { baseName: "Algebra I", section: "AOPS" }
+      // "AP Calculus BC" → { baseName: "AP Calculus BC", section: "" }
+      function parseBlockName(name) {
+        let base = (name || '').trim();
+        let section = '';
+
+        // 1) Extract trailing parenthetical: "Algebra I (AOPS)" → base "Algebra I", section "AOPS"
+        const parenMatch = base.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+        if (parenMatch) {
+          base = parenMatch[1].trim();
+          section = parenMatch[2].trim();
+        }
+
+        // 2) Extract trailing single uppercase letter: "AMC 10 이론수업 A" → section "A"
+        if (!section) {
+          const letterMatch = base.match(/^(.+?)\s+([A-Z])\s*$/);
+          if (letterMatch) {
+            base = letterMatch[1].trim();
+            section = letterMatch[2];
+          }
+        }
+
+        // 3) Extract "이론수업" / "Theory" — move to section prefix
+        const thMatch = base.match(/^(.+?)\s*(이론수업|Theory)\s*$/i);
+        if (thMatch) {
+          const prefix = thMatch[2]; // "이론수업" or "Theory"
+          base = thMatch[1].trim();
+          section = section ? prefix + ' ' + section : '';
+        }
+
+        return { baseName: base, section };
+      }
+
+      // Build subject registry: group by baseName
+      const baseMap = {}; // baseName -> { id, name, color }
       sd.schedules.forEach(sched => {
         (sched.blocks || []).forEach(b => {
           if (b.subjectId) return; // already migrated
-          const subjKo = (typeof b.subject === 'object' ? b.subject.ko : b.subject) || '';
-          const subjEn = (typeof b.subject === 'object' ? b.subject.en : '') || '';
-          // Use the base subject name (without section label) as key
-          // For v1 blocks we just use the full name as-is
-          const key = subjKo || subjEn;
-          if (!key) return;
-          if (!colorMap[key]) {
+          const nameKo = (typeof b.subject === 'object' ? b.subject.ko : b.subject) || '';
+          const nameEn = (typeof b.subject === 'object' ? b.subject.en : '') || '';
+
+          const parsedKo = parseBlockName(nameKo);
+          const parsedEn = parseBlockName(nameEn);
+          const baseKey = parsedKo.baseName || parsedEn.baseName;
+          if (!baseKey) return;
+
+          if (!baseMap[baseKey]) {
             const id = genSubjectId();
-            colorMap[key] = { id, name: { ko: subjKo, en: subjEn }, color: b.color || SWATCHES[0] };
-            sd.subjects.push(colorMap[key]);
+            baseMap[baseKey] = { id, name: { ko: parsedKo.baseName, en: parsedEn.baseName || parsedKo.baseName }, color: b.color || SWATCHES[0] };
+            sd.subjects.push(baseMap[baseKey]);
           }
-          b.subjectId = colorMap[key].id;
-          b.sectionLabel = b.sectionLabel || '';
+          b.subjectId = baseMap[baseKey].id;
+          b.sectionLabel = parsedKo.section || parsedEn.section || '';
+          b.color = baseMap[baseKey].color;
         });
       });
       sd.version = 2;
@@ -1542,7 +1581,7 @@ function initScheduleEditorPage() {
       });
     });
 
-    // Syllabus subjects - migrate to bilingual
+    // Syllabus subjects - migrate to bilingual + link to subject registry
     const syllSubjects = state.syllabus_data.subjects || [];
     state.syllabus_data.subjects = syllSubjects.map(s => ({
       subjectId: s.subjectId || '',
@@ -1556,6 +1595,39 @@ function initScheduleEditorPage() {
         topic: toBi(wp.topic)
       }))
     }));
+
+    // Link unlinked syllabus subjects to registry by name matching
+    const regSubjects = sd.subjects || [];
+    state.syllabus_data.subjects.forEach(syllSubj => {
+      if (syllSubj.subjectId) return; // already linked
+      const nameKo = syllSubj.name.ko || '';
+      const nameEn = syllSubj.name.en || '';
+      const match = regSubjects.find(rs =>
+        (nameKo && rs.name.ko === nameKo) || (nameEn && rs.name.en === nameEn)
+      );
+      if (match) {
+        syllSubj.subjectId = match.id;
+      }
+    });
+
+    // Remove duplicate syllabus subjects (keep the one with more content)
+    const seenIds = new Set();
+    state.syllabus_data.subjects = state.syllabus_data.subjects.filter(s => {
+      if (!s.subjectId) return true; // keep unlinked
+      if (seenIds.has(s.subjectId)) return false; // duplicate
+      seenIds.add(s.subjectId);
+      return true;
+    });
+
+    // Sort: linked subjects first (in registry order), unlinked last
+    const regOrder = {};
+    regSubjects.forEach((rs, i) => { regOrder[rs.id] = i; });
+    state.syllabus_data.subjects.sort((a, b) => {
+      const oa = a.subjectId ? (regOrder[a.subjectId] ?? 999) : 1000;
+      const ob = b.subjectId ? (regOrder[b.subjectId] ?? 999) : 1000;
+      return oa - ob;
+    });
+
     if (!state.syllabus_data.version) state.syllabus_data.version = 2;
   }
 
