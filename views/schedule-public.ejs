@@ -159,11 +159,7 @@
         <% if (sched.title && t(sched.title, 'ko')) { %>
           <h3 class="sp-timetable-subtitle"><%= t(sched.title, 'ko') %></h3>
         <% } %>
-        <% if (sched.dateRange && (sched.dateRange.start || sched.dateRange.end)) { %>
-          <p class="sp-timetable-daterange" style="color:#868E96;font-size:0.9rem;margin-bottom:0.75rem;">
-            <%= sched.dateRange.start || '' %><% if (sched.dateRange.start && sched.dateRange.end) { %> ~ <% } %><%= sched.dateRange.end || '' %>
-          </p>
-        <% } %>
+        <%/* dateRange는 내부 일정 생성용 — 발행 페이지에서는 표시하지 않음 */%>
 
         <div class="sp-timetable-wrapper">
           <div class="sp-timetable" style="--start-hour:<%= startHour %>;--end-hour:<%= endHour %>;">

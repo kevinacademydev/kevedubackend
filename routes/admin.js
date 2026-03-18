@@ -1496,6 +1496,115 @@ router.post('/schedule-pages/:id/delete', requireAdmin, async (req, res) => {
   }
 });
 
+// POST /admin/schedule-pages/:id/generate-sessions - 시간표→수업 일정 자동 생성
+router.post('/schedule-pages/:id/generate-sessions', requireAdmin, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const userRole = req.session.user.role;
+    const pageId = req.params.id;
+    const { scheduleId } = req.body;
+
+    if (!scheduleId) return res.status(400).json({ error: 'scheduleId 필요' });
+
+    // Load schedule page
+    const rows = await sql`SELECT * FROM schedule_pages WHERE id = ${pageId}`;
+    if (rows.length === 0) return res.status(404).json({ error: 'Page not found' });
+    const page = rows[0];
+
+    if (!isAdminLike(userRole) && page.owner_id !== userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const scheduleData = JSON.parse(page.schedule_data || '{}');
+    const schedules = scheduleData.schedules || [];
+    const sections = scheduleData.sections || [];
+
+    // Find target schedule
+    const targetSchedule = schedules.find(s => s.id === scheduleId);
+    if (!targetSchedule) return res.status(400).json({ error: '해당 시간표를 찾을 수 없습니다.' });
+
+    const startDate = targetSchedule.dateRange?.start;
+    const endDate = targetSchedule.dateRange?.end;
+    if (!startDate || !endDate) return res.status(400).json({ error: '날짜 범위가 설정되지 않았습니다.' });
+
+    // Day name → JS getDay() mapping
+    const dayMap = { '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6 };
+
+    // Filter sections with slots in this schedule AND classId set
+    const relevantSections = sections.filter(sec =>
+      sec.classId && (sec.slots || []).some(slot => slot.scheduleId === scheduleId)
+    );
+
+    if (relevantSections.length === 0) {
+      return res.json({ success: true, results: [], message: '수업이 연결된 분반이 없습니다.' });
+    }
+
+    const results = [];
+
+    for (const sec of relevantSections) {
+      const classId = parseInt(sec.classId, 10);
+      const slots = (sec.slots || []).filter(s => s.scheduleId === scheduleId);
+
+      // Get class name for result display
+      const classRows = await sql`SELECT name FROM classes WHERE id = ${classId}`;
+      const className = classRows.length > 0 ? classRows[0].name : `Class #${classId}`;
+
+      // Count existing schedules for this class to continue numbering
+      const existingCount = await sql`SELECT COUNT(*)::int as cnt FROM class_schedules WHERE class_id = ${classId}`;
+      let sessionNum = (existingCount[0]?.cnt || 0) + 1;
+
+      let created = 0;
+      let skipped = 0;
+
+      // Collect all dates for all slots, sorted
+      const dateSlotsMap = []; // { date, slot }
+
+      for (const slot of slots) {
+        const dayNum = dayMap[slot.day];
+        if (dayNum === undefined) continue;
+
+        // Iterate through date range
+        const cur = new Date(startDate + 'T00:00:00');
+        const end = new Date(endDate + 'T00:00:00');
+
+        while (cur <= end) {
+          if (cur.getDay() === dayNum) {
+            const dateStr = cur.getFullYear() + '-' +
+              String(cur.getMonth() + 1).padStart(2, '0') + '-' +
+              String(cur.getDate()).padStart(2, '0');
+            dateSlotsMap.push({ date: dateStr, slot });
+          }
+          cur.setDate(cur.getDate() + 1);
+        }
+      }
+
+      // Sort by date then start time
+      dateSlotsMap.sort((a, b) => a.date.localeCompare(b.date) || a.slot.start.localeCompare(b.slot.start));
+
+      for (const { date, slot } of dateSlotsMap) {
+        // Duplicate check: same class_id + date + start_time
+        const dup = await sql`SELECT id FROM class_schedules WHERE class_id = ${classId} AND schedule_date = ${date} AND start_time = ${slot.start}`;
+        if (dup.length > 0) {
+          skipped++;
+          continue;
+        }
+
+        await sql`INSERT INTO class_schedules (class_id, schedule_date, start_time, end_time, description)
+          VALUES (${classId}, ${date}, ${slot.start}, ${slot.end}, ${sessionNum + '회차'})`;
+        sessionNum++;
+        created++;
+      }
+
+      results.push({ className, classId, created, skipped });
+    }
+
+    res.json({ success: true, results });
+  } catch (err) {
+    console.error('Generate sessions error:', err);
+    res.status(500).json({ error: '서버 오류: ' + err.message });
+  }
+});
+
 // ===== Profile Image Upload/Delete =====
 
 // Multer for profile image (image only)

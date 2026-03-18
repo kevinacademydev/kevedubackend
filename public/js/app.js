@@ -1861,6 +1861,7 @@ function initScheduleEditorPage() {
             <span>~</span>
             <input type="date" class="se-sched-date-end" data-si="${si}" value="${esc(sched.dateRange?.end || '')}">
           </div>
+          <button class="btn btn-sm btn-outline se-generate-sessions" data-si="${si}" data-schedule-id="${sched.id}" title="수업 일정 자동 생성" style="font-size:0.75rem;padding:0.15rem 0.5rem;margin-left:0.3rem;">일정 생성</button>
           ${schedules.length > 1 ? `<button class="se-sched-remove" data-si="${si}" title="삭제">&times;</button>` : ''}
         </div>
         <div class="se-days-check" data-si="${si}">`;
@@ -1999,6 +2000,94 @@ function initScheduleEditorPage() {
         const si = parseInt(card.dataset.si);
         const sectionId = card.dataset.sectionId;
         openSectionPopup(sectionId, si);
+      });
+    });
+
+    // Generate sessions button
+    document.querySelectorAll('.se-generate-sessions').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const si = parseInt(btn.dataset.si);
+        const schedId = btn.dataset.scheduleId;
+
+        // Collect latest state from inputs
+        collectAllScheduleStates();
+
+        const sched = state.schedule_data.schedules[si];
+        if (!sched) return;
+
+        if (!sched.dateRange?.start || !sched.dateRange?.end) {
+          return alert('날짜 범위를 먼저 입력해주세요.');
+        }
+
+        const sections = state.schedule_data.sections || [];
+        const relevantSections = sections.filter(sec =>
+          sec.classId && (sec.slots || []).some(slot => slot.scheduleId === schedId)
+        );
+
+        if (relevantSections.length === 0) {
+          return alert('수업이 연결된 분반이 없습니다.\n분반 편집에서 수업을 연결해주세요.');
+        }
+
+        // Calculate estimated count for confirm
+        const dayMap = { '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6 };
+        let totalEstimate = 0;
+        const details = [];
+        relevantSections.forEach(sec => {
+          const slots = (sec.slots || []).filter(s => s.scheduleId === schedId);
+          let count = 0;
+          slots.forEach(slot => {
+            const dayNum = dayMap[slot.day];
+            if (dayNum === undefined) return;
+            const cur = new Date(sched.dateRange.start + 'T00:00:00');
+            const end = new Date(sched.dateRange.end + 'T00:00:00');
+            while (cur <= end) {
+              if (cur.getDay() === dayNum) count++;
+              cur.setDate(cur.getDate() + 1);
+            }
+          });
+          totalEstimate += count;
+          details.push(`• ${t(sec.name)}: ${slots.map(s => s.day + ' ' + s.start + '-' + s.end).join(', ')} → ${count}개`);
+        });
+
+        const msg = `[${t(sched.title)}] 수업 일정 생성\n` +
+          `기간: ${sched.dateRange.start} ~ ${sched.dateRange.end}\n\n` +
+          details.join('\n') +
+          `\n\n총 ${totalEstimate}개 일정을 생성합니다.\n(기존 중복은 자동 건너뜀)\n\n진행하시겠습니까?`;
+
+        if (!confirm(msg)) return;
+
+        // Save current state first
+        try {
+          await doSave();
+        } catch (e) {
+          // Continue even if save fails
+        }
+
+        btn.disabled = true;
+        btn.textContent = '생성 중...';
+
+        try {
+          const res = await fetch(`${window.__SEC}/schedule-pages/${pageId}/generate-sessions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scheduleId: schedId })
+          });
+          const data = await res.json();
+
+          if (data.success) {
+            const summary = (data.results || []).map(r =>
+              `${r.className}: ${r.created}개 생성, ${r.skipped}개 건너뜀`
+            ).join('\n');
+            alert('일정 생성 완료!\n\n' + (summary || data.message || ''));
+          } else {
+            alert('오류: ' + (data.error || '알 수 없는 오류'));
+          }
+        } catch (err) {
+          alert('요청 실패: ' + err.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = '일정 생성';
+        }
       });
     });
 
