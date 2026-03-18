@@ -1251,6 +1251,27 @@ router.post('/consultation/:id/delete', requireAdminLike, async (req, res) => {
   }
 });
 
+// POST /admin/student/:id/delete - 학생 삭제 (소프트 삭제: role='deleted', 번호 보존)
+router.post('/student/:id/delete', requireSuperAdmin, async (req, res) => {
+  try {
+    const studentId = parseInt(req.params.id, 10);
+
+    const userRows = await sql`SELECT * FROM users WHERE id = ${studentId} AND role = 'student'`;
+    if (userRows.length === 0) return res.status(404).json({ error: '학생을 찾을 수 없습니다.' });
+
+    // 모든 수업 등록 해제
+    await sql`UPDATE class_enrollments SET status = 'dropped' WHERE student_id = ${studentId}`;
+
+    // 소프트 삭제 (username은 보존 → 번호 재사용 방지)
+    await sql`UPDATE users SET role = 'deleted' WHERE id = ${studentId}`;
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Student delete error:', err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+});
+
 // ======= 강사 관리 (admin only) =======
 
 // POST /admin/teachers - 강사/부원장 계정 생성 (admin only)

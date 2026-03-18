@@ -557,6 +557,22 @@ function initAdminStudentPage() {
   const el = document.getElementById('adminStudentPage');
   const studentId = el.dataset.studentId;
 
+  // Delete student
+  const btnDelete = document.getElementById('btnDeleteStudent');
+  if (btnDelete) {
+    btnDelete.addEventListener('click', async () => {
+      if (!confirm('이 학생을 삭제하시겠습니까?\n(학생 번호는 보존되며, 수업 등록이 모두 해제됩니다)')) return;
+      const res = await fetch(`${window.__SEC}/student/${studentId}/delete`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert('학생이 삭제되었습니다.');
+        location.href = window.__SEC;
+      } else {
+        alert(data.error || '삭제 실패');
+      }
+    });
+  }
+
   // Add feedback
   const btnFb = document.getElementById('btnAddFeedback');
   if (btnFb) {

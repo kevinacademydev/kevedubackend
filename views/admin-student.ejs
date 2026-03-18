@@ -21,7 +21,12 @@
 
         <!-- 학생 정보 -->
         <div class="card" style="margin-bottom:1.5rem;">
-          <div class="card-header"><h3>학생 정보</h3></div>
+          <div class="card-header">
+            <h3>학생 정보</h3>
+            <% if (userRole === 'admin') { %>
+              <button class="btn btn-sm btn-danger" id="btnDeleteStudent">학생 삭제</button>
+            <% } %>
+          </div>
           <div class="card-body">
             <div class="student-info-grid">
               <div><strong>아이디:</strong> <%= student.username %></div>
