@@ -2385,8 +2385,12 @@ function initScheduleEditorPage() {
       subjectOptions += `<option value="${s.id}" ${sel}>${esc(t(s.name)) || '(이름 없음)'}</option>`;
     });
 
+    const usedClassIds = new Set(
+      sections.filter(s => s.classId && (!sec || s.id !== sec.id)).map(s => String(s.classId))
+    );
     let classOptions = '<option value="">-- 수업 연결 안 함 --</option>';
     (window.__classesList || []).forEach(c => {
+      if (usedClassIds.has(String(c.id))) return;
       const sel = sec && sec.classId == c.id ? 'selected' : '';
       classOptions += `<option value="${c.id}" ${sel}>${esc(c.name)}</option>`;
     });
