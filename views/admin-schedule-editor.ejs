@@ -106,6 +106,19 @@
           </div>
         </div>
 
+        <!-- 2.5 Subject Registry -->
+        <div class="se-section">
+          <button class="se-section-toggle" data-target="seSubjectRegistry">
+            <span>과목 관리 (Subjects)</span>
+            <span class="se-arrow">&#9660;</span>
+          </button>
+          <div class="se-section-body" id="seSubjectRegistry">
+            <p style="font-size:0.82rem;color:var(--gray-500);margin-bottom:0.75rem;">시간표 블록에서 선택할 과목을 등록하세요. 과목별로 실라버스가 자동 연결됩니다.</p>
+            <div id="seSubjectList" class="se-subject-list"></div>
+            <button class="btn btn-sm btn-outline" id="seAddSubjectReg" style="margin-top:0.5rem;">+ 과목 추가</button>
+          </div>
+        </div>
+
         <!-- 3. Schedule Tables (Multiple) -->
         <div class="se-section">
           <button class="se-section-toggle" data-target="seSchedule">
@@ -186,7 +199,17 @@
     <div class="se-cell-popup-inner">
       <div class="se-popup-title" id="sePopupTitle">수업 추가</div>
       <div class="form-group" style="margin-bottom:0.5rem;">
-        <label>과목명</label>
+        <label>과목</label>
+        <select id="seBlockSubjectSelect" class="se-block-subject-select">
+          <option value="">-- 과목 선택 --</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0.5rem;">
+        <label>분반명 <small style="color:var(--gray-500);font-weight:400;">(선택)</small></label>
+        <input type="text" id="seBlockSection" placeholder="A, B, Zoom 등">
+      </div>
+      <div class="form-group" style="margin-bottom:0.5rem;display:none;" id="seBlockSubjectFreeGroup">
+        <label>과목명 (직접입력)</label>
         <input type="text" id="seBlockSubject" placeholder="SAT Math">
       </div>
       <div class="form-row" style="margin-bottom:0.5rem;">

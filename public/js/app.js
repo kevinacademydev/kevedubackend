@@ -1456,6 +1456,8 @@ function initScheduleEditorPage() {
       classApplicationUrl: ''
     },
     schedule_data: {
+      version: 2,
+      subjects: [],
       schedules: [{
         id: 's_' + Date.now(),
         title: { ko: '시간표', en: 'Schedule' },
@@ -1468,7 +1470,10 @@ function initScheduleEditorPage() {
     theme_data: { heroBg: '#133327', accent: '#ffffff' }
   };
 
-  // Migrate old data to bilingual format + multi-schedule
+  // Generate unique subject ID
+  function genSubjectId() { return 'subj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); }
+
+  // Migrate old data to bilingual format + multi-schedule + v2 subject system
   function migrateData() {
     const hd = state.header_data;
     hd.programTitle = toBi(hd.programTitle);
@@ -1503,9 +1508,44 @@ function initScheduleEditorPage() {
       });
     }
 
-    // Syllabus subjects
-    const subjects = state.syllabus_data.subjects || [];
-    state.syllabus_data.subjects = subjects.map(s => ({
+    // --- V2 migration: extract subjects from blocks if not yet done ---
+    if (!sd.subjects) sd.subjects = [];
+    if (!sd.version || sd.version < 2) {
+      // Build subject registry from existing blocks
+      const colorMap = {}; // "subjectBaseText" -> { id, name, color }
+      sd.schedules.forEach(sched => {
+        (sched.blocks || []).forEach(b => {
+          if (b.subjectId) return; // already migrated
+          const subjKo = (typeof b.subject === 'object' ? b.subject.ko : b.subject) || '';
+          const subjEn = (typeof b.subject === 'object' ? b.subject.en : '') || '';
+          // Use the base subject name (without section label) as key
+          // For v1 blocks we just use the full name as-is
+          const key = subjKo || subjEn;
+          if (!key) return;
+          if (!colorMap[key]) {
+            const id = genSubjectId();
+            colorMap[key] = { id, name: { ko: subjKo, en: subjEn }, color: b.color || SWATCHES[0] };
+            sd.subjects.push(colorMap[key]);
+          }
+          b.subjectId = colorMap[key].id;
+          b.sectionLabel = b.sectionLabel || '';
+        });
+      });
+      sd.version = 2;
+    }
+
+    // Ensure every block has subjectId fields (defensive)
+    sd.schedules.forEach(sched => {
+      (sched.blocks || []).forEach(b => {
+        if (!b.subjectId) b.subjectId = '';
+        if (!('sectionLabel' in b)) b.sectionLabel = '';
+      });
+    });
+
+    // Syllabus subjects - migrate to bilingual
+    const syllSubjects = state.syllabus_data.subjects || [];
+    state.syllabus_data.subjects = syllSubjects.map(s => ({
+      subjectId: s.subjectId || '',
       name: toBi(s.name),
       description: toBi(s.description),
       promo: toBi(s.promo),
@@ -1516,6 +1556,70 @@ function initScheduleEditorPage() {
         topic: toBi(wp.topic)
       }))
     }));
+    if (!state.syllabus_data.version) state.syllabus_data.version = 2;
+  }
+
+  // Calculate session count for a subject (for syllabus weeklyPlan length)
+  function calculateSessionCount(subjectId) {
+    const sd = state.schedule_data;
+    // Group blocks by (sectionLabel, scheduleIndex)
+    // sectionLabel="" means single/continuous → sum across schedules
+    // sectionLabel="A","B","Zoom" → parallel sections → max
+    const sectionCounts = {}; // "sectionLabel" -> [count_per_schedule]
+    sd.schedules.forEach((sched, si) => {
+      const blocks = (sched.blocks || []).filter(b => b.subjectId === subjectId);
+      const bySection = {};
+      blocks.forEach(b => {
+        const label = b.sectionLabel || '';
+        bySection[label] = (bySection[label] || 0) + 1;
+      });
+      Object.entries(bySection).forEach(([label, count]) => {
+        if (!sectionCounts[label]) sectionCounts[label] = [];
+        sectionCounts[label].push({ si, count });
+      });
+    });
+
+    const labels = Object.keys(sectionCounts);
+    if (!labels.length) return 0;
+
+    // If only one label (no named sections or single section)
+    if (labels.length === 1) {
+      const label = labels[0];
+      const entries = sectionCounts[label];
+      if (label === '') {
+        // No section label → continuous across sessions → sum
+        return entries.reduce((sum, e) => sum + e.count, 0);
+      } else {
+        // Single named section → sum if same label across schedules (continuous)
+        return entries.reduce((sum, e) => sum + e.count, 0);
+      }
+    }
+
+    // Multiple section labels → parallel sections
+    // For each section, sum its counts across schedules (continuous within that section)
+    // Then take max across all sections
+    let maxCount = 0;
+    labels.forEach(label => {
+      const total = sectionCounts[label].reduce((sum, e) => sum + e.count, 0);
+      if (total > maxCount) maxCount = total;
+    });
+    return maxCount;
+  }
+
+  // Get subject registry entry by id
+  function getSubject(subjectId) {
+    return (state.schedule_data.subjects || []).find(s => s.id === subjectId);
+  }
+
+  // Build display name for a block: "과목명 분반명" or just "과목명"
+  function buildBlockDisplayName(block) {
+    const subj = getSubject(block.subjectId);
+    if (!subj) return block.subject || { ko: '', en: '' };
+    const label = block.sectionLabel ? ' ' + block.sectionLabel : '';
+    return {
+      ko: (subj.name.ko || '') + label,
+      en: (subj.name.en || '') + label
+    };
   }
 
   // Section toggles
@@ -1613,7 +1717,10 @@ function initScheduleEditorPage() {
     if (isNaN(idx) || idx >= state.syllabus_data.subjects.length) return;
     const subj = state.syllabus_data.subjects[idx];
 
-    subj.name[editLang] = panel.querySelector('.se-subj-name')?.value || '';
+    // Only update name if not linked to subject registry
+    if (!subj.subjectId) {
+      subj.name[editLang] = panel.querySelector('.se-subj-name')?.value || '';
+    }
     subj.description[editLang] = panel.querySelector('.se-subj-description')?.value || '';
     subj.promo[editLang] = panel.querySelector('.se-subj-promo')?.value || '';
     subj.placement[editLang] = panel.querySelector('.se-subj-placement')?.value || '';
@@ -1843,6 +1950,8 @@ function initScheduleEditorPage() {
   let editingBlockIdx = null;
   let editingBlockDay = null;
   const popup = document.getElementById('seBlockPopup');
+  const blockSubjectSelect = document.getElementById('seBlockSubjectSelect');
+  const blockSectionInput = document.getElementById('seBlockSection');
   const blockSubjectInput = document.getElementById('seBlockSubject');
   const blockStartInput = document.getElementById('seBlockStart');
   const blockEndInput = document.getElementById('seBlockEnd');
@@ -1860,13 +1969,47 @@ function initScheduleEditorPage() {
     });
   });
 
+  // Populate subject dropdown from registry
+  function populateSubjectDropdown(selectedSubjId) {
+    const subjects = state.schedule_data.subjects || [];
+    blockSubjectSelect.innerHTML = '<option value="">-- 과목 선택 --</option>';
+    subjects.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = t(s.name) || '(이름 없음)';
+      if (s.id === selectedSubjId) opt.selected = true;
+      blockSubjectSelect.appendChild(opt);
+    });
+  }
+
+  // When subject dropdown changes, auto-apply color
+  blockSubjectSelect.addEventListener('change', () => {
+    const subjId = blockSubjectSelect.value;
+    const subj = getSubject(subjId);
+    if (subj) {
+      selectedColor = subj.color;
+      blockColorsWrap.querySelectorAll('.se-swatch').forEach(s => {
+        s.classList.toggle('active', s.dataset.color === selectedColor);
+      });
+    }
+  });
+
   function openBlockPopup(idx, day, schedIdx) {
+    // If no subjects registered and adding new block, guide user
+    if (idx === null && (!state.schedule_data.subjects || !state.schedule_data.subjects.length)) {
+      alert('먼저 "과목 관리" 섹션에서 과목을 추가해주세요.');
+      return;
+    }
+
     activeScheduleIdx = schedIdx;
     editingBlockIdx = idx;
     const sched = state.schedule_data.schedules[schedIdx];
+
     if (idx !== null) {
       const b = sched.blocks[idx];
       editingBlockDay = b.day;
+      populateSubjectDropdown(b.subjectId || '');
+      blockSectionInput.value = b.sectionLabel || '';
       blockSubjectInput.value = t(b.subject);
       blockStartInput.value = b.start;
       blockEndInput.value = b.end;
@@ -1875,6 +2018,8 @@ function initScheduleEditorPage() {
       popupTitle.textContent = '수업 편집';
     } else {
       editingBlockDay = day;
+      populateSubjectDropdown('');
+      blockSectionInput.value = '';
       blockSubjectInput.value = '';
       blockStartInput.value = '09:00';
       blockEndInput.value = '10:00';
@@ -1886,37 +2031,48 @@ function initScheduleEditorPage() {
       s.classList.toggle('active', s.dataset.color === selectedColor);
     });
     popup.style.display = 'flex';
-    blockSubjectInput.focus();
+    blockSubjectSelect.focus();
   }
 
   document.getElementById('seBlockOk').addEventListener('click', () => {
-    const subjectVal = blockSubjectInput.value.trim();
-    if (!subjectVal) { blockSubjectInput.focus(); return; }
+    const subjId = blockSubjectSelect.value;
+    if (!subjId) { alert('과목을 선택해주세요.'); blockSubjectSelect.focus(); return; }
+
+    const subj = getSubject(subjId);
+    const sectionLabel = blockSectionInput.value.trim();
+    // Build display name
+    const displayName = {
+      ko: (subj.name.ko || '') + (sectionLabel ? ' ' + sectionLabel : ''),
+      en: (subj.name.en || '') + (sectionLabel ? ' ' + sectionLabel : '')
+    };
 
     const sched = state.schedule_data.schedules[activeScheduleIdx];
     if (!sched.blocks) sched.blocks = [];
 
     if (editingBlockIdx !== null) {
       const existing = sched.blocks[editingBlockIdx];
-      existing.subject[editLang] = subjectVal;
+      existing.subjectId = subjId;
+      existing.sectionLabel = sectionLabel;
+      existing.subject = displayName;
       existing.start = blockStartInput.value;
       existing.end = blockEndInput.value;
       existing.color = selectedColor;
       existing.day = editingBlockDay;
     } else {
-      const subjectBi = { ko: '', en: '' };
-      subjectBi[editLang] = subjectVal;
       sched.blocks.push({
         day: editingBlockDay,
         start: blockStartInput.value,
         end: blockEndInput.value,
-        subject: subjectBi,
+        subjectId: subjId,
+        sectionLabel: sectionLabel,
+        subject: displayName,
         color: selectedColor
       });
     }
     popup.style.display = 'none';
     collectAllScheduleStates();
     renderScheduleList();
+    syncSyllabus();
     markDirty();
   });
 
@@ -1926,12 +2082,13 @@ function initScheduleEditorPage() {
       state.schedule_data.schedules[activeScheduleIdx].blocks.splice(editingBlockIdx, 1);
       popup.style.display = 'none';
       renderScheduleList();
+      syncSyllabus();
       markDirty();
     }
   });
 
   document.getElementById('seBlockCancel').addEventListener('click', () => { popup.style.display = 'none'; });
-  blockSubjectInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('seBlockOk').click(); });
+  blockSectionInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('seBlockOk').click(); });
 
   // Syllabus
   let activeSyllabusIdx = 0;
@@ -1954,8 +2111,13 @@ function initScheduleEditorPage() {
     if (!subjs.length || activeSyllabusIdx >= subjs.length) { panel.innerHTML = '<p class="empty-message">과목을 추가해주세요.</p>'; return; }
     const subj = subjs[activeSyllabusIdx];
 
+    const isLinked = !!subj.subjectId;
+    const nameReadonly = isLinked ? 'readonly style="background:var(--gray-100);color:var(--gray-500);"' : '';
+    const sessionCount = isLinked ? calculateSessionCount(subj.subjectId) : 0;
+
     let html = `<div class="se-subj-panel" data-idx="${activeSyllabusIdx}">
-      <div class="form-group"><label>과목명</label><input class="se-subj-name" value="${esc(t(subj.name))}"></div>
+      <div class="form-group"><label>과목명${isLinked ? ' <small style="color:var(--gray-500);font-weight:400;">(과목 관리에서 변경)</small>' : ''}</label><input class="se-subj-name" value="${esc(t(subj.name))}" ${nameReadonly}></div>
+      ${isLinked && sessionCount > 0 ? `<div style="font-size:0.82rem;color:var(--gray-500);">시간표 블록 기준 총 ${sessionCount}회차</div>` : ''}
       <div class="form-group"><label>설명</label><input class="se-subj-description" value="${esc(t(subj.description))}"></div>
       <div class="form-group"><label>홍보 문구</label><textarea class="se-subj-promo" rows="2">${esc(t(subj.promo))}</textarea></div>
 
@@ -2058,19 +2220,7 @@ function initScheduleEditorPage() {
   }
 
   document.getElementById('seAddSubject').addEventListener('click', () => {
-    collectSyllabusState();
-    state.syllabus_data.subjects.push({
-      name: { ko: '', en: '' },
-      description: { ko: '', en: '' },
-      promo: { ko: '', en: '' },
-      highlights: [],
-      placement: { ko: '', en: '' },
-      weeklyPlan: []
-    });
-    activeSyllabusIdx = state.syllabus_data.subjects.length - 1;
-    renderSyllabusTabs();
-    renderSyllabusPanel();
-    markDirty();
+    alert('과목은 "과목 관리" 섹션에서 추가해주세요. 추가된 과목이 자동으로 교과과정 탭에 나타납니다.');
   });
 
   // Add card / highlight buttons
@@ -2203,9 +2353,193 @@ function initScheduleEditorPage() {
     } catch (e) { console.error(e); }
   }
 
+  // ===== Subject Registry UI =====
+  function renderSubjectList() {
+    const container = document.getElementById('seSubjectList');
+    if (!container) return;
+    const subjects = state.schedule_data.subjects || [];
+    if (!subjects.length) {
+      container.innerHTML = '<p class="empty-message">등록된 과목이 없습니다.</p>';
+      return;
+    }
+    let html = '';
+    subjects.forEach((subj, i) => {
+      html += `<div class="se-subject-item" data-subj-idx="${i}">
+        <span class="se-subject-color-dot" style="background:${subj.color};"></span>
+        <input type="text" class="se-subject-name-input" data-subj-idx="${i}" data-lang="ko" value="${esc(subj.name.ko || '')}" placeholder="과목명 (한)">
+        <input type="text" class="se-subject-name-input-en" data-subj-idx="${i}" data-lang="en" value="${esc(subj.name.en || '')}" placeholder="과목명 (영)">
+        <input type="color" class="se-subject-color-input" data-subj-idx="${i}" value="${subj.color}">
+        <button class="se-subject-remove" data-subj-idx="${i}" title="삭제">&times;</button>
+      </div>`;
+    });
+    container.innerHTML = html;
+
+    // Wire events
+    container.querySelectorAll('.se-subject-name-input').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const idx = parseInt(inp.dataset.subjIdx);
+        state.schedule_data.subjects[idx].name.ko = inp.value;
+        updateBlockDisplayNames(state.schedule_data.subjects[idx].id);
+        markDirty();
+      });
+    });
+    container.querySelectorAll('.se-subject-name-input-en').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const idx = parseInt(inp.dataset.subjIdx);
+        state.schedule_data.subjects[idx].name.en = inp.value;
+        updateBlockDisplayNames(state.schedule_data.subjects[idx].id);
+        markDirty();
+      });
+    });
+    container.querySelectorAll('.se-subject-color-input').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const idx = parseInt(inp.dataset.subjIdx);
+        const subj = state.schedule_data.subjects[idx];
+        subj.color = inp.value;
+        inp.parentElement.querySelector('.se-subject-color-dot').style.background = inp.value;
+        // Update all blocks with this subjectId
+        state.schedule_data.schedules.forEach(sched => {
+          (sched.blocks || []).forEach(b => {
+            if (b.subjectId === subj.id) b.color = inp.value;
+          });
+        });
+        renderScheduleList();
+        markDirty();
+      });
+    });
+    container.querySelectorAll('.se-subject-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.subjIdx);
+        const subj = state.schedule_data.subjects[idx];
+        // Check if any blocks use this subject
+        let usedCount = 0;
+        state.schedule_data.schedules.forEach(sched => {
+          (sched.blocks || []).forEach(b => { if (b.subjectId === subj.id) usedCount++; });
+        });
+        if (usedCount > 0) {
+          if (!confirm(`이 과목을 사용하는 블록이 ${usedCount}개 있습니다. 블록의 과목 연결이 해제됩니다. 삭제하시겠습니까?`)) return;
+          // Unlink blocks
+          state.schedule_data.schedules.forEach(sched => {
+            (sched.blocks || []).forEach(b => {
+              if (b.subjectId === subj.id) { b.subjectId = ''; }
+            });
+          });
+        }
+        state.schedule_data.subjects.splice(idx, 1);
+        renderSubjectList();
+        renderScheduleList();
+        syncSyllabus();
+        markDirty();
+      });
+    });
+  }
+
+  // Update block display names when subject name changes
+  function updateBlockDisplayNames(subjectId) {
+    const subj = getSubject(subjectId);
+    if (!subj) return;
+    state.schedule_data.schedules.forEach(sched => {
+      (sched.blocks || []).forEach(b => {
+        if (b.subjectId === subjectId) {
+          const label = b.sectionLabel ? ' ' + b.sectionLabel : '';
+          b.subject = {
+            ko: (subj.name.ko || '') + label,
+            en: (subj.name.en || '') + label
+          };
+        }
+      });
+    });
+    renderScheduleList();
+  }
+
+  // Add subject button
+  document.getElementById('seAddSubjectReg').addEventListener('click', () => {
+    if (!state.schedule_data.subjects) state.schedule_data.subjects = [];
+    const colorIdx = state.schedule_data.subjects.length % SWATCHES.length;
+    state.schedule_data.subjects.push({
+      id: genSubjectId(),
+      name: { ko: '', en: '' },
+      color: SWATCHES[colorIdx]
+    });
+    renderSubjectList();
+    syncSyllabus();
+    markDirty();
+    // Focus the new input
+    const inputs = document.querySelectorAll('.se-subject-name-input');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  });
+
+  // ===== Syllabus auto-sync =====
+  function syncSyllabus() {
+    const schedSubjects = state.schedule_data.subjects || [];
+    const syllSubjects = state.syllabus_data.subjects || [];
+
+    // Build set of current subject IDs
+    const schedIds = new Set(schedSubjects.map(s => s.id));
+
+    // Remove syllabus entries for deleted subjects
+    state.syllabus_data.subjects = syllSubjects.filter(s => !s.subjectId || schedIds.has(s.subjectId));
+
+    // Add missing subjects
+    const existingSyllIds = new Set(state.syllabus_data.subjects.map(s => s.subjectId));
+    schedSubjects.forEach(subj => {
+      if (!existingSyllIds.has(subj.id)) {
+        const count = calculateSessionCount(subj.id);
+        const weeklyPlan = [];
+        for (let i = 0; i < count; i++) {
+          weeklyPlan.push({ week: (i + 1) + '회차', topic: { ko: '', en: '' } });
+        }
+        state.syllabus_data.subjects.push({
+          subjectId: subj.id,
+          name: { ko: subj.name.ko || '', en: subj.name.en || '' },
+          description: { ko: '', en: '' },
+          promo: { ko: '', en: '' },
+          highlights: [],
+          placement: { ko: '', en: '' },
+          weeklyPlan
+        });
+      }
+    });
+
+    // Update session counts (adjust weeklyPlan length)
+    state.syllabus_data.subjects.forEach(syllSubj => {
+      if (!syllSubj.subjectId) return;
+      const count = calculateSessionCount(syllSubj.subjectId);
+      if (count <= 0) return; // no blocks yet
+      const wp = syllSubj.weeklyPlan || [];
+      if (wp.length < count) {
+        // Add more weeks
+        for (let i = wp.length; i < count; i++) {
+          wp.push({ week: (i + 1) + '회차', topic: { ko: '', en: '' } });
+        }
+      } else if (wp.length > count && count > 0) {
+        // Trim from end (only empty ones)
+        while (wp.length > count) {
+          const last = wp[wp.length - 1];
+          const hasContent = (last.topic.ko || '') + (last.topic.en || '');
+          if (hasContent) break; // don't remove if has content
+          wp.pop();
+        }
+      }
+      syllSubj.weeklyPlan = wp;
+
+      // Sync name from subject registry
+      const schedSubj = getSubject(syllSubj.subjectId);
+      if (schedSubj) {
+        syllSubj.name = { ko: schedSubj.name.ko || '', en: schedSubj.name.en || '' };
+      }
+    });
+
+    state.syllabus_data.version = 2;
+    // Re-render syllabus
+    renderSyllabusTabs();
+    renderSyllabusPanel();
+  }
+
   function renderAll() {
     renderCards();
     renderHighlights();
+    renderSubjectList();
     renderScheduleList();
     renderSyllabusTabs();
     renderSyllabusPanel();

@@ -2177,6 +2177,85 @@ body {
   margin-top: 0;
 }
 
+/* Subject Registry */
+.se-subject-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.se-subject-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+}
+
+.se-subject-color-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.se-subject-item input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  border: 1.5px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.se-subject-item input[type="text"]:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.se-subject-item input[type="color"] {
+  width: 32px;
+  height: 32px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.se-subject-remove {
+  background: none;
+  border: none;
+  color: var(--gray-400);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.se-subject-remove:hover {
+  color: var(--danger);
+}
+
+/* Block popup subject dropdown */
+.se-block-subject-select {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1.5px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: white;
+}
+
+.se-block-subject-select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
 /* === Schedule List Tabs (Admin) === */
 .sp-tab-nav {
   display: flex;
