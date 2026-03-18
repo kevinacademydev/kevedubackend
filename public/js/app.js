@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initAdminDashboard();
     if (document.getElementById('dashboardScheduleCard')) initDashboardSchedules();
   }
+  if (document.getElementById('adminClassesPage')) {
+    initAdminClassesPage();
+  }
   if (document.getElementById('adminTeachersPage')) {
     initAdminTeachersPage();
   }
@@ -68,6 +71,34 @@ function initSidebar(sidebar) {
       toggle.classList.toggle('active', !isOpen);
     });
   });
+
+  // Classes unified sidebar: arrow button toggles submenu
+  sidebar.querySelectorAll('.sidebar-arrow-btn').forEach(btn => {
+    const targetId = btn.dataset.target;
+    const submenu = targetId ? document.getElementById(targetId) : null;
+    if (!submenu) return;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = submenu.classList.contains('open');
+      submenu.classList.toggle('open');
+      btn.classList.toggle('open', !isOpen);
+    });
+  });
+
+  // Subgroup toggles inside classes submenu
+  sidebar.querySelectorAll('.sidebar-subgroup-toggle').forEach(toggle => {
+    const targetId = toggle.dataset.target;
+    const submenu = targetId ? document.getElementById(targetId) : null;
+    if (!submenu) return;
+    toggle.addEventListener('click', () => {
+      const isOpen = submenu.classList.contains('open');
+      submenu.classList.toggle('open');
+      toggle.classList.toggle('active', !isOpen);
+      // Update arrow
+      const arrow = toggle.querySelector('.sidebar-arrow');
+      if (arrow) arrow.innerHTML = isOpen ? '&#9654;' : '&#9660;';
+    });
+  });
 }
 
 // ======= Dropzone =======
@@ -90,35 +121,6 @@ function initDropzone(zone) {
 function initAdminDashboard() {
   const el = document.getElementById('adminDashboard');
   const userRole = el.dataset.userRole;
-
-  // Create class
-  const btnCreateClass = document.getElementById('btnCreateClass');
-  if (btnCreateClass) {
-    btnCreateClass.addEventListener('click', () => {
-      document.getElementById('createClassModal').style.display = 'flex';
-    });
-  }
-
-  const btnConfirmCreateClass = document.getElementById('btnConfirmCreateClass');
-  if (btnConfirmCreateClass) {
-    btnConfirmCreateClass.addEventListener('click', async () => {
-      const name = document.getElementById('newClassName').value.trim();
-      const type = document.getElementById('newClassType').value;
-      if (!name) return alert('수업 이름을 입력해주세요.');
-
-      const res = await fetch(window.__SEC + '/classes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, type })
-      });
-      const data = await res.json();
-      if (data.success) {
-        location.reload();
-      } else {
-        alert(data.error || '수업 생성 실패');
-      }
-    });
-  }
 
   // Create teacher (dashboard)
   const btnCreateTeacher = document.getElementById('btnCreateTeacher');
@@ -169,6 +171,118 @@ function initAdminDashboard() {
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', e => {
       if (e.target === overlay) overlay.style.display = 'none';
+    });
+  });
+}
+
+// ======= Admin Classes Page =======
+function initAdminClassesPage() {
+  // Create class
+  const btnCreateClass = document.getElementById('btnCreateClass');
+  if (btnCreateClass) {
+    btnCreateClass.addEventListener('click', () => {
+      document.getElementById('createClassModal').style.display = 'flex';
+    });
+  }
+
+  const btnConfirmCreateClass = document.getElementById('btnConfirmCreateClass');
+  if (btnConfirmCreateClass) {
+    btnConfirmCreateClass.addEventListener('click', async () => {
+      const name = document.getElementById('newClassName').value.trim();
+      const type = document.getElementById('newClassType').value;
+      if (!name) return alert('수업 이름을 입력해주세요.');
+
+      const res = await fetch(window.__SEC + '/classes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, type })
+      });
+      const data = await res.json();
+      if (data.success) {
+        location.reload();
+      } else {
+        alert(data.error || '수업 생성 실패');
+      }
+    });
+  }
+
+  // Close modals on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) overlay.style.display = 'none';
+    });
+  });
+
+  // ── Bulk edit mode ──
+  const btnEdit = document.getElementById('btnEditMode');
+  const toolbar = document.getElementById('bulkToolbar');
+  const btnCancel = document.getElementById('btnCancelEdit');
+  if (!btnEdit) return;
+
+  let editMode = false;
+
+  function setEditMode(on) {
+    editMode = on;
+    document.getElementById('adminClassesPage').classList.toggle('bulk-edit-mode', on);
+    toolbar.style.display = on ? 'flex' : 'none';
+    btnEdit.style.display = on ? 'none' : '';
+    document.querySelectorAll('.bulk-checkbox').forEach(el => el.style.display = on ? '' : 'none');
+    if (!on) {
+      document.querySelectorAll('.bulk-item-check, .bulk-select-all').forEach(cb => cb.checked = false);
+      document.querySelectorAll('.classes-col-card-wrap').forEach(el => el.classList.remove('bulk-selected'));
+    }
+    updateBulkCount();
+  }
+
+  function updateBulkCount() {
+    const cnt = document.querySelectorAll('.bulk-item-check:checked').length;
+    document.getElementById('bulkCount').textContent = cnt + '개 선택';
+    toolbar.querySelectorAll('[data-bulk-status]').forEach(btn => btn.disabled = cnt === 0);
+  }
+
+  btnEdit.addEventListener('click', () => setEditMode(true));
+  btnCancel.addEventListener('click', () => setEditMode(false));
+
+  // Select-all per column
+  document.querySelectorAll('.bulk-select-all').forEach(sa => {
+    sa.addEventListener('change', () => {
+      const col = sa.closest('.classes-column');
+      col.querySelectorAll('.bulk-item-check').forEach(cb => {
+        cb.checked = sa.checked;
+        cb.closest('.classes-col-card-wrap').classList.toggle('bulk-selected', sa.checked);
+      });
+      updateBulkCount();
+    });
+  });
+
+  // Individual checkbox
+  document.addEventListener('change', e => {
+    if (!e.target.classList.contains('bulk-item-check')) return;
+    e.target.closest('.classes-col-card-wrap').classList.toggle('bulk-selected', e.target.checked);
+    updateBulkCount();
+  });
+
+  // Bulk status buttons
+  toolbar.querySelectorAll('[data-bulk-status]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const status = btn.dataset.bulkStatus;
+      const ids = [...document.querySelectorAll('.bulk-item-check:checked')].map(cb => parseInt(cb.value));
+      if (ids.length === 0) return;
+
+      const labelMap = { active: '진행 중', upcoming: '예정', inactive: '종강' };
+      if (!confirm(ids.length + '개 수업을 "' + labelMap[status] + '"(으)로 변경하시겠습니까?')) return;
+
+      const res = await fetch(window.__SEC + '/classes/bulk-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classIds: ids, status })
+      });
+      const data = await res.json();
+      if (data.success) {
+        location.reload();
+      } else {
+        alert(data.error || '상태 변경 실패');
+      }
     });
   });
 }

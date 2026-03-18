@@ -85,6 +85,13 @@ router.use(async (req, res, next) => {
       }
     } else {
       sidebarClasses = await sql`SELECT id, name, type, status FROM classes ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'upcoming' THEN 1 WHEN 'inactive' THEN 2 END, name ASC`;
+      // admin/subadmin: 자기 담당 수업도 별도 조회
+      const myClassIds = await getTeacherClassIds(userId);
+      if (myClassIds.length > 0) {
+        res.locals.mySidebarClasses = await sql`SELECT id, name, type, status FROM classes WHERE id = ANY(${myClassIds}) ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'upcoming' THEN 1 WHEN 'inactive' THEN 2 END, name ASC`;
+      } else {
+        res.locals.mySidebarClasses = [];
+      }
     }
     res.locals.sidebarClasses = sidebarClasses;
     next();
@@ -162,6 +169,66 @@ router.get('/', requireAdmin, async (req, res) => {
     res.render('admin-dashboard', { classes, submissions, gradedFiles, teachers, userRole, userId, enrollmentCount, uniqueStudentCount, user: req.session.user, isAdminLike: isAdminLike(userRole) });
   } catch (err) {
     console.error('Admin dashboard error:', err);
+    res.status(500).send('서버 오류');
+  }
+});
+
+// ======= 수업 관리 전용 페이지 =======
+
+router.get('/classes', requireAdmin, async (req, res) => {
+  try {
+    const userRole = req.session.user.role;
+    const userId = req.session.user.id;
+
+    let classes, pageTitle, activePage;
+    if (userRole === 'teacher') {
+      const classIds = await getTeacherClassIds(userId);
+      if (classIds.length > 0) {
+        classes = await sql`SELECT c.*,
+          (SELECT COUNT(*) FROM class_enrollments ce WHERE ce.class_id = c.id AND ce.status = 'active') as student_count,
+          (SELECT STRING_AGG(u.name, ', ') FROM class_teachers ct JOIN users u ON ct.teacher_id = u.id WHERE ct.class_id = c.id) as teacher_names
+          FROM classes c WHERE c.id = ANY(${classIds}) ORDER BY CASE c.status WHEN 'active' THEN 0 WHEN 'upcoming' THEN 1 WHEN 'inactive' THEN 2 END, c.name ASC`;
+      } else {
+        classes = [];
+      }
+      pageTitle = '수업';
+      activePage = 'classes';
+    } else {
+      classes = await sql`SELECT c.*,
+        (SELECT COUNT(*) FROM class_enrollments ce WHERE ce.class_id = c.id AND ce.status = 'active') as student_count,
+        (SELECT STRING_AGG(u.name, ', ') FROM class_teachers ct JOIN users u ON ct.teacher_id = u.id WHERE ct.class_id = c.id) as teacher_names
+        FROM classes c ORDER BY CASE c.status WHEN 'active' THEN 0 WHEN 'upcoming' THEN 1 WHEN 'inactive' THEN 2 END, c.name ASC`;
+      pageTitle = '전체 수업 관리';
+      activePage = 'classes';
+    }
+
+    res.render('admin-classes', { classes, userRole, user: req.session.user, pageTitle, activePage });
+  } catch (err) {
+    console.error('Classes page error:', err);
+    res.status(500).send('서버 오류');
+  }
+});
+
+// GET /admin/my-classes - 내 수업 (admin/subadmin 자기 담당 수업만)
+router.get('/my-classes', requireAdmin, async (req, res) => {
+  try {
+    const userRole = req.session.user.role;
+    const userId = req.session.user.id;
+
+    const classIds = await getTeacherClassIds(userId);
+    let classes;
+    if (classIds.length > 0) {
+      classes = await sql`SELECT c.*,
+        (SELECT COUNT(*) FROM class_enrollments ce WHERE ce.class_id = c.id AND ce.status = 'active') as student_count,
+        (SELECT STRING_AGG(u.name, ', ') FROM class_teachers ct JOIN users u ON ct.teacher_id = u.id WHERE ct.class_id = c.id) as teacher_names
+        FROM classes c WHERE c.id = ANY(${classIds}) ORDER BY CASE c.status WHEN 'active' THEN 0 WHEN 'upcoming' THEN 1 WHEN 'inactive' THEN 2 END, c.name ASC`;
+    } else {
+      classes = [];
+    }
+
+    res.render('admin-classes', { classes, userRole, user: req.session.user, pageTitle: '내 수업', activePage: 'my-classes' });
+  } catch (err) {
+    console.error('My classes page error:', err);
     res.status(500).send('서버 오류');
   }
 });
@@ -536,6 +603,24 @@ router.post('/classes', requireAdminLike, async (req, res) => {
     res.json({ success: true, classId: result[0].id });
   } catch (err) {
     console.error('Create class error:', err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+});
+
+// POST /admin/classes/bulk-status - 수업 상태 일괄 변경
+router.post('/classes/bulk-status', requireAdminLike, async (req, res) => {
+  try {
+    const { classIds, status } = req.body;
+    if (!Array.isArray(classIds) || classIds.length === 0) return res.status(400).json({ error: '수업을 선택해주세요.' });
+    if (!['active', 'upcoming', 'inactive'].includes(status)) return res.status(400).json({ error: '유효하지 않은 상태입니다.' });
+
+    const ids = classIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    if (ids.length === 0) return res.status(400).json({ error: '유효한 수업 ID가 없습니다.' });
+
+    await sql`UPDATE classes SET status = ${status} WHERE id = ANY(${ids})`;
+    res.json({ success: true, updated: ids.length });
+  } catch (err) {
+    console.error('Bulk status update error:', err);
     res.status(500).json({ error: '서버 오류' });
   }
 });
