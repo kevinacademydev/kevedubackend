@@ -20,6 +20,8 @@
           <% if (userRole !== 'admin' && userRole !== 'subadmin') { %>
             <button class="btn btn-sm btn-warning" id="seRequestReviewBtn">발행 신청하기</button>
           <% } %>
+          <button class="btn btn-sm btn-outline" id="seExportTextBtn">텍스트 내보내기</button>
+          <button class="btn btn-sm btn-outline" id="seExportImageBtn">이미지 내보내기</button>
           <button class="btn btn-sm btn-outline" id="sePreviewBtn">미리보기</button>
           <button class="btn btn-sm btn-primary" id="seSaveBtn">저장</button>
         </div>
@@ -201,6 +203,7 @@
   </div>
 
   <script>window.__SEC='<%= sectionPath %>';window.__BASE='<%= basePath %>'</script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="/js/app.js"></script>
 </body>
 </html>

@@ -134,7 +134,6 @@
 <section class="sp-section">
   <div class="sp-container">
     <h2 class="sp-section-title" style="color: <%= theme.heroBg || '#1a1a2e' %>;">시간표</h2>
-
     <% schedules.forEach((sched, schedIdx) => {
       const schedBlocks = buildSlotBlocks(sched);
       const schedDays = sched.days || [];
@@ -157,12 +156,14 @@
       const bodyH = totalMinutes * pxPerMin + topPad + botPad;
     %>
       <div class="sp-timetable-section" style="<%= schedIdx > 0 ? 'margin-top:2.5rem;' : '' %>">
-        <% if (sched.title && t(sched.title, 'ko')) { %>
-          <h3 class="sp-timetable-subtitle"><%= t(sched.title, 'ko') %></h3>
-        <% } %>
         <%/* dateRange는 내부 일정 생성용 — 발행 페이지에서는 표시하지 않음 */%>
 
         <div class="sp-timetable-wrapper">
+          <% if (sched.title && t(sched.title, 'ko')) { %>
+            <div class="sp-tt-title-bar">
+              <%= t(sched.title, 'ko') %>
+            </div>
+          <% } %>
           <div class="sp-timetable" style="--start-hour:<%= startHour %>;--end-hour:<%= endHour %>;">
             <!-- Time axis -->
             <div class="sp-tt-time-col">
@@ -273,6 +274,46 @@
               <strong>배치 기준:</strong>
               <span data-syl-lang="ko"><%= t(subj.placement, 'ko') %></span>
               <span data-syl-lang="en" style="display:none;"><%= t(subj.placement, 'en') %></span>
+            </div>
+          <% } %>
+
+          <%
+            // 일정: find sections matching this subject
+            const subjSections = allSections.filter(sec => sec.subjectId === subj.subjectId);
+            if (subjSections.length > 0) {
+          %>
+            <div class="sp-class-schedule">
+              <h4>일정</h4>
+              <% subjSections.forEach((sec, secIdx) => { %>
+                <div class="sp-class-schedule-section">
+                  <% if (subjSections.length > 1) { %>
+                    <div class="sp-class-schedule-section-name">
+                      <span class="sp-class-schedule-dot" style="background:<%= sec.color || '#3498DB' %>;"></span>
+                      <%= t(sec.name, 'ko') %>
+                    </div>
+                  <% } %>
+                  <% schedules.forEach(sched => {
+                    const slotsInSched = (sec.slots || []).filter(sl => sl.scheduleId === sched.id).sort((a,b) => {
+                      const dayOrder = ['월','화','수','목','금','토','일'];
+                      return (dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day)) || a.start.localeCompare(b.start);
+                    });
+                    if (slotsInSched.length === 0) return;
+                  %>
+                    <div class="sp-class-schedule-block">
+                      <% if (schedules.length > 1) { %>
+                        <div class="sp-class-schedule-period"><%= t(sched.title, 'ko') %></div>
+                      <% } %>
+                      <div class="sp-class-schedule-slots">
+                        <% slotsInSched.forEach(slot => { %>
+                          <span class="sp-class-schedule-slot" style="border-color:<%= sec.color || '#3498DB' %>;">
+                            <strong><%= slot.day %></strong> <%= slot.start %> – <%= slot.end %>
+                          </span>
+                        <% }); %>
+                      </div>
+                    </div>
+                  <% }); %>
+                </div>
+              <% }); %>
             </div>
           <% } %>
 

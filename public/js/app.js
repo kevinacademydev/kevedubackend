@@ -2755,6 +2755,136 @@ function initScheduleEditorPage() {
     });
   }
 
+  // Export as text
+  document.getElementById('seExportTextBtn').addEventListener('click', () => {
+    collectState();
+    const sd = state.schedule_data;
+    const schedules = sd.schedules || [];
+    const sections = sd.sections || [];
+    const dayOrder = ['월','화','수','목','금','토','일'];
+    const lines = [];
+
+    const fmt = d => { const p = d.split('-'); return parseInt(p[1]) + '/' + parseInt(p[2]); };
+
+    sections.forEach(sec => {
+      const name = t(sec.name);
+      let totalCount = 0;
+      const allDays = new Set();
+      let firstTime = null;
+      let overallStart = null;
+      let overallEnd = null;
+
+      schedules.forEach(sched => {
+        const slots = (sec.slots || []).filter(s => s.scheduleId === sched.id);
+        if (!slots.length) return;
+
+        // Calculate weeks from dateRange
+        const dr = sched.dateRange || {};
+        let weeks = 0;
+        if (dr.start && dr.end) {
+          const s = new Date(dr.start), e = new Date(dr.end);
+          weeks = Math.max(Math.round((e - s) / (1000 * 60 * 60 * 24 * 7)), 1);
+          if (!overallStart || s < new Date(overallStart)) overallStart = dr.start;
+          if (!overallEnd || e > new Date(overallEnd)) overallEnd = dr.end;
+        }
+
+        // total = weeks × weekly slots
+        totalCount += weeks * slots.length;
+        slots.forEach(s => allDays.add(s.day));
+        if (!firstTime) firstTime = { start: slots[0].start, end: slots[0].end };
+      });
+
+      if (totalCount === 0) return;
+
+      const dateStr = (overallStart && overallEnd) ? fmt(overallStart) + '~' + fmt(overallEnd) : '';
+      const daysArr = [...allDays].sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
+      const timeStr = firstTime ? (firstTime.start + '~' + firstTime.end) : '';
+
+      lines.push(`${name} (${dateStr} ${daysArr.join('')} ${timeStr}, ${totalCount}회)`);
+    });
+
+    if (!lines.length) { alert('내보낼 분반 데이터가 없습니다.'); return; }
+
+    const text = lines.join('\n');
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    link.download = (state.slug || 'schedule') + '_classes.txt';
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+
+  // Export as image (capture editor timetable grids)
+  document.getElementById('seExportImageBtn').addEventListener('click', async () => {
+    collectState();
+    const grids = document.querySelectorAll('.se-schedule-card');
+    if (!grids.length) { alert('시간표가 없습니다.'); return; }
+
+    const btn = document.getElementById('seExportImageBtn');
+    btn.disabled = true;
+    btn.textContent = '저장 중...';
+
+    try {
+      // Open preview in hidden iframe to capture clean public-style timetable
+      const slug = slugInput.value;
+      if (!slug) { alert('slug를 먼저 입력해주세요.'); btn.disabled = false; btn.textContent = '이미지 내보내기'; return; }
+
+      // Save first if dirty
+      if (dirty) {
+        document.getElementById('seSaveBtn').click();
+        await new Promise(r => setTimeout(r, 2000));
+      }
+
+      // Create hidden iframe with preview
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:1200px;height:4000px;border:none;';
+      document.body.appendChild(iframe);
+      iframe.src = '/p/' + slug + '/preview';
+
+      await new Promise((resolve, reject) => {
+        iframe.onload = resolve;
+        setTimeout(reject, 10000);
+      });
+
+      const doc = iframe.contentDocument;
+      const sections = doc.querySelectorAll('.sp-timetable-section');
+      if (!sections.length) { alert('시간표를 찾을 수 없습니다.'); document.body.removeChild(iframe); btn.disabled = false; btn.textContent = '이미지 내보내기'; return; }
+
+      const canvases = [];
+      for (const sec of sections) {
+        const c = await html2canvas(sec, { scale: 3, backgroundColor: '#ffffff', useCORS: true });
+        canvases.push(c);
+      }
+
+      const gap = 40 * 3;
+      const totalW = Math.max(...canvases.map(c => c.width));
+      const totalH = canvases.reduce((sum, c) => sum + c.height, 0) + gap * (canvases.length - 1);
+      const merged = document.createElement('canvas');
+      merged.width = totalW;
+      merged.height = totalH;
+      const ctx = merged.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, totalW, totalH);
+      let y = 0;
+      canvases.forEach(c => {
+        ctx.drawImage(c, 0, y);
+        y += c.height + gap;
+      });
+
+      const link = document.createElement('a');
+      link.download = (state.slug || 'timetable') + '.png';
+      link.href = merged.toDataURL('image/png');
+      link.click();
+
+      document.body.removeChild(iframe);
+    } catch (e) {
+      alert('이미지 생성에 실패했습니다: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '이미지 내보내기';
+    }
+  });
+
   // Preview
   document.getElementById('sePreviewBtn').addEventListener('click', async () => {
     const slug = slugInput.value;
