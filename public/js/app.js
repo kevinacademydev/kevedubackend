@@ -2837,7 +2837,7 @@ function initScheduleEditorPage() {
 
       // Create hidden iframe with preview
       const iframe = document.createElement('iframe');
-      iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:1200px;height:4000px;border:none;';
+      iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:1600px;height:5000px;border:none;';
       document.body.appendChild(iframe);
       iframe.src = '/p/' + slug + '/preview';
 
@@ -2847,6 +2847,22 @@ function initScheduleEditorPage() {
       });
 
       const doc = iframe.contentDocument;
+
+      // Inject enlarged styles for export readability
+      const exportStyle = doc.createElement('style');
+      exportStyle.textContent = `
+        .sp-timetable-section { font-size: 1.4rem !important; }
+        .sp-tt-title-bar { font-size: 1.6rem !important; padding: 0.9rem 1rem !important; }
+        .sp-tt-time-label { font-size: 1rem !important; }
+        .sp-tt-day-header { font-size: 1.25rem !important; height: 52px !important; }
+        .sp-tt-header-spacer { height: 52px !important; }
+        .sp-tt-block { padding: 4px 4px !important; display: flex !important; flex-direction: column !important; justify-content: center !important; align-items: center !important; }
+        .sp-tt-block-name { font-size: 1.1rem !important; line-height: 1.15 !important; -webkit-line-clamp: 4 !important; text-align: center !important; }
+        .sp-tt-block-time { font-size: 1rem !important; text-align: center !important; margin-top: 2px !important; white-space: nowrap !important; }
+        .sp-timetable { grid-template-columns: 65px repeat(auto-fit, minmax(0, 1fr)) !important; }
+      `;
+      doc.head.appendChild(exportStyle);
+
       const sections = doc.querySelectorAll('.sp-timetable-section');
       if (!sections.length) { alert('시간표를 찾을 수 없습니다.'); document.body.removeChild(iframe); btn.disabled = false; btn.textContent = '이미지 내보내기'; return; }
 
